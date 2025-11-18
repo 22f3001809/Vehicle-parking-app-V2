@@ -1,0 +1,15 @@
+Flask==2.3.3
+Flask-SQLAlchemy
+Flask-CORS
+Flask-Mail
+Flask-Caching
+Flask-Migrate
+Flask-JWT-Extended
+Flask-WTF
+celery[redis]
+python-dotenv
+redis
+requests
+WTForms
+email-validator
+pytz
