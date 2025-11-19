@@ -67,7 +67,8 @@ def login():
         'is_admin': user.is_admin,
         'username': user.username
     }
-    access_token = create_access_token(identity=user.id, additional_claims=additional_claims)
+    # Use string identity to avoid 'Subject must be a string' (PyJWT) on decode
+    access_token = create_access_token(identity=str(user.id), additional_claims=additional_claims)
     
     return jsonify({
         'access_token': access_token,
@@ -81,9 +82,14 @@ def login():
 def get_current_user():
     """Get current user info from token"""
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    try:
+        user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
+    user = User.query.get(user_id)
     
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    return jsonify(user.to_dict()), 200
+    # Keep response shape consistent with front-end expectations
+    return jsonify({'user': user.to_dict()}), 200

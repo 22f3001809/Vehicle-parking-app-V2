@@ -26,6 +26,10 @@ def user_required():
 def dashboard():
     """User dashboard - personal statistics"""
     current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
     
     # Get user's active reservation
     active_reservation = Reservation.query.filter_by(
@@ -79,11 +83,27 @@ def get_parking_lots():
     return jsonify([lot.to_dict() for lot in lots]), 200
 
 
+@user_bp.route('/parking-lots/<int:lot_id>', methods=['GET'])
+@jwt_required()
+def get_parking_lot_details(lot_id):
+    """Get specific parking lot details"""
+    lot = ParkingLot.query.get_or_404(lot_id)
+    
+    if not lot.is_active:
+        return jsonify({'error': 'This parking lot is not available'}), 404
+    
+    return jsonify(lot.to_dict()), 200
+
+
 @user_bp.route('/parking-lots/<int:lot_id>/book', methods=['POST'])
 @jwt_required()
 def book_parking_spot(lot_id):
     """Book an available parking spot in a lot (automatically allocated)"""
     current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
     data = request.get_json()
     
     if not data or not data.get('vehicle_number'):
@@ -115,8 +135,14 @@ def book_parking_spot(lot_id):
         status='pending'
     )
     
+    # Update spot status to Reserved
+    spot.status = 'R'
+    
     db.session.add(reservation)
     db.session.commit()
+    
+    # Refresh to get updated relationships
+    db.session.refresh(reservation)
     
     return jsonify({
         'message': f'Spot {spot.spot_number} reserved successfully',
@@ -130,6 +156,10 @@ def book_parking_spot(lot_id):
 def checkin_reservation(reservation_id):
     """Check in - mark vehicle as parked (change spot status to Occupied)"""
     current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
     
     reservation = Reservation.query.get_or_404(reservation_id)
     
@@ -161,6 +191,10 @@ def checkin_reservation(reservation_id):
 def release_spot(reservation_id):
     """Release/vacate the parking spot"""
     current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
     
     reservation = Reservation.query.get_or_404(reservation_id)
     
@@ -194,6 +228,10 @@ def release_spot(reservation_id):
 def get_my_reservations():
     """Get current user's reservation history"""
     current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
     
     status = request.args.get('status')  # Filter by status
     
@@ -211,6 +249,10 @@ def get_my_reservations():
 def get_reservation_details(reservation_id):
     """Get specific reservation details"""
     current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
     
     reservation = Reservation.query.get_or_404(reservation_id)
     
@@ -234,6 +276,10 @@ def get_reservation_details(reservation_id):
 def cancel_reservation(reservation_id):
     """Cancel a pending reservation"""
     current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
     
     reservation = Reservation.query.get_or_404(reservation_id)
     
@@ -244,12 +290,135 @@ def cancel_reservation(reservation_id):
     if reservation.status != 'pending':
         return jsonify({'error': 'Only pending reservations can be cancelled'}), 400
     
-    # Cancel reservation
+    # Cancel reservation and free up the spot
     reservation.status = 'cancelled'
+    
+    # If spot was reserved, make it available again
+    if reservation.parking_spot and reservation.parking_spot.status == 'R':
+        reservation.parking_spot.status = 'A'
     
     db.session.commit()
     
     return jsonify({
         'message': 'Reservation cancelled successfully',
         'reservation': reservation.to_dict()
+    }), 200
+
+
+@user_bp.route('/profile', methods=['GET'])
+@jwt_required()
+def get_profile():
+    """Get current user profile"""
+    current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
+    
+    user = User.query.get_or_404(current_user_id)
+    return jsonify({'user': user.to_dict()}), 200
+
+
+@user_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """Update user profile"""
+    current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
+    
+    user = User.query.get_or_404(current_user_id)
+    data = request.get_json()
+    
+    # Update allowed fields
+    if 'full_name' in data:
+        user.full_name = data['full_name']
+    if 'email' in data:
+        # Check if email is already taken by another user
+        existing = User.query.filter_by(email=data['email']).first()
+        if existing and existing.id != current_user_id:
+            return jsonify({'error': 'Email already in use'}), 400
+        user.email = data['email']
+    if 'phone_number' in data:
+        user.phone_number = data['phone_number']
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Profile updated successfully',
+        'user': user.to_dict()
+    }), 200
+
+
+@user_bp.route('/change-password', methods=['POST'])
+@jwt_required()
+def change_password():
+    """Change user password"""
+    current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
+    
+    user = User.query.get_or_404(current_user_id)
+    data = request.get_json()
+    
+    if not data or not data.get('current_password') or not data.get('new_password'):
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    # Verify current password
+    if not user.check_password(data['current_password']):
+        return jsonify({'error': 'Current password is incorrect'}), 401
+    
+    # Update password
+    user.set_password(data['new_password'])
+    db.session.commit()
+    
+    return jsonify({'message': 'Password changed successfully'}), 200
+
+
+@user_bp.route('/reservations/<int:reservation_id>/checkout-details', methods=['GET'])
+@jwt_required()
+def get_checkout_details(reservation_id):
+    """Get checkout details (cost, duration) without performing checkout"""
+    current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
+
+    reservation = Reservation.query.get_or_404(reservation_id)
+
+    if reservation.user_id != current_user_id:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    if reservation.status != 'active':
+        return jsonify({'error': 'Reservation is not active'}), 400
+
+    if not reservation.check_in_timestamp:
+        return jsonify({'error': 'Cannot calculate cost before check-in'}), 400
+
+    # Simulate checkout to calculate cost
+    simulated_check_out_time = datetime.utcnow()
+    duration = simulated_check_out_time - reservation.check_in_timestamp
+    duration_hours = duration.total_seconds() / 3600.0
+    charged_hours = max(1.0, duration_hours)
+    
+    cost = 0
+    if reservation.parking_spot and reservation.parking_spot.parking_lot:
+        cost = charged_hours * reservation.parking_spot.parking_lot.price_per_hour
+
+    duration_str = ""
+    hours = int(duration.total_seconds() // 3600)
+    minutes = int((duration.total_seconds() % 3600) // 60)
+    if hours > 0:
+        duration_str = f"{hours}h {minutes}m"
+    else:
+        duration_str = f"{minutes}m"
+
+    return jsonify({
+        'cost': round(cost, 2),
+        'duration': duration_str
     }), 200

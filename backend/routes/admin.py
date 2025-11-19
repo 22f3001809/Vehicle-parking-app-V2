@@ -27,20 +27,37 @@ def dashboard():
     total_lots = ParkingLot.query.count()
     total_spots = ParkingSpot.query.count()
     occupied_spots = ParkingSpot.query.filter_by(status='O').count()
+    reserved_spots = ParkingSpot.query.filter_by(status='R').count()
     available_spots = ParkingSpot.query.filter_by(status='A').count()
     total_users = User.query.filter_by(is_admin=False).count()
     
     active_reservations = Reservation.query.filter_by(status='active').count()
+    pending_reservations = Reservation.query.filter_by(status='pending').count()
     completed_reservations = Reservation.query.filter_by(status='completed').count()
+    
+    # Calculate total revenue
+    completed = Reservation.query.filter_by(status='completed').all()
+    total_revenue = sum(res.parking_cost or 0 for res in completed)
+    
+    # Get recent parking lots
+    recent_lots = ParkingLot.query.order_by(ParkingLot.created_at.desc()).limit(5).all()
+    
+    # Get recent users
+    recent_users = User.query.filter_by(is_admin=False).order_by(User.created_at.desc()).limit(5).all()
     
     return jsonify({
         'total_lots': total_lots,
         'total_spots': total_spots,
         'occupied_spots': occupied_spots,
+        'reserved_spots': reserved_spots,
         'available_spots': available_spots,
         'total_users': total_users,
         'active_reservations': active_reservations,
-        'completed_reservations': completed_reservations
+        'pending_reservations': pending_reservations,
+        'completed_reservations': completed_reservations,
+        'total_revenue': round(total_revenue, 2),
+        'recent_lots': [lot.to_dict() for lot in recent_lots],
+        'recent_users': [user.to_dict() for user in recent_users]
     }), 200
 
 
@@ -149,7 +166,13 @@ def update_parking_lot(lot_id):
             ).order_by(ParkingSpot.id.desc()).limit(spots_to_delete).all()
             
             if len(available_spots) < spots_to_delete:
-                return jsonify({'error': 'Cannot delete occupied spots'}), 400
+                occupied_count = ParkingSpot.query.filter(
+                    ParkingSpot.lot_id == lot_id,
+                    ParkingSpot.status != 'A'
+                ).count()
+                return jsonify({
+                    'error': f'Cannot reduce spots. {occupied_count} spot(s) are currently occupied or reserved. Only available spots can be removed.'
+                }), 400
             
             for spot in available_spots:
                 db.session.delete(spot)
@@ -169,10 +192,23 @@ def delete_parking_lot(lot_id):
     """Delete parking lot (only if all spots are available)"""
     lot = ParkingLot.query.get_or_404(lot_id)
     
-    # Check if any spot is occupied
-    occupied_spots = ParkingSpot.query.filter_by(lot_id=lot_id, status='O').count()
-    if occupied_spots > 0:
-        return jsonify({'error': 'Cannot delete parking lot with occupied spots'}), 400
+    # Check if any spot is not available (occupied or reserved)
+    non_available_spots = ParkingSpot.query.filter(
+        ParkingSpot.lot_id == lot_id,
+        ParkingSpot.status != 'A'
+    ).count()
+    
+    if non_available_spots > 0:
+        return jsonify({'error': 'Cannot delete parking lot. All spots must be empty/available before deletion.'}), 400
+    
+    # Check if there are any active or pending reservations for this lot
+    active_reservations = Reservation.query.join(ParkingSpot).filter(
+        ParkingSpot.lot_id == lot_id,
+        Reservation.status.in_(['active', 'pending'])
+    ).count()
+    
+    if active_reservations > 0:
+        return jsonify({'error': 'Cannot delete parking lot with active or pending reservations.'}), 400
     
     db.session.delete(lot)
     db.session.commit()
@@ -190,15 +226,22 @@ def get_lot_spots(lot_id):
     result = []
     for spot in spots:
         spot_data = spot.to_dict()
-        # Add current reservation info if occupied
-        if spot.status == 'O':
-            reservation = spot.get_current_reservation()
+        
+        # Add current reservation info if occupied or reserved
+        if spot.status in ['O', 'R']:
+            reservation = Reservation.query.filter(
+                Reservation.spot_id == spot.id,
+                Reservation.status.in_(['active', 'pending'])
+            ).order_by(Reservation.booking_timestamp.desc()).first()
+
             if reservation:
                 spot_data['current_reservation'] = {
                     'id': reservation.id,
                     'user': reservation.user.username if reservation.user else None,
                     'vehicle_number': reservation.vehicle_number,
-                    'check_in_time': reservation.check_in_timestamp.isoformat() if reservation.check_in_timestamp else None
+                    'check_in_time': reservation.check_in_timestamp.isoformat() if reservation.check_in_timestamp else None,
+                    'booking_time': reservation.booking_timestamp.isoformat() if reservation.booking_timestamp else None,
+                    'status': reservation.status
                 }
         result.append(spot_data)
     
@@ -211,9 +254,15 @@ def get_lot_spots(lot_id):
 @admin_bp.route('/users', methods=['GET'])
 @admin_required()
 def get_all_users():
-    """Get all registered users"""
+    """Get all registered users with reservation counts"""
     users = User.query.filter_by(is_admin=False).all()
-    return jsonify([user.to_dict() for user in users]), 200
+    users_data = []
+    for user in users:
+        user_dict = user.to_dict()
+        # Add reservation count
+        user_dict['reservation_count'] = Reservation.query.filter_by(user_id=user.id).count()
+        users_data.append(user_dict)
+    return jsonify(users_data), 200
 
 
 @admin_bp.route('/users/<int:user_id>', methods=['GET'])
@@ -247,3 +296,32 @@ def get_all_reservations():
     
     reservations = query.order_by(Reservation.booking_timestamp.desc()).all()
     return jsonify([res.to_dict() for res in reservations]), 200
+
+
+@admin_bp.route('/spots/<int:spot_id>/history', methods=['GET'])
+@admin_required()
+def get_spot_history(spot_id):
+    """Get reservation history for a specific spot"""
+    spot = ParkingSpot.query.get_or_404(spot_id)
+    
+    # Get all reservations for this spot
+    reservations = Reservation.query.filter_by(spot_id=spot_id).order_by(
+        Reservation.booking_timestamp.desc()
+    ).all()
+    
+    history = []
+    for res in reservations:
+        res_data = res.to_dict()
+        # Add user details
+        if res.user:
+            res_data['user_details'] = {
+                'id': res.user.id,
+                'username': res.user.username,
+                'email': res.user.email
+            }
+        history.append(res_data)
+    
+    return jsonify({
+        'spot': spot.to_dict(),
+        'history': history
+    }), 200

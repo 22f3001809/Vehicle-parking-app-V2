@@ -73,6 +73,9 @@ class ParkingLot(db.Model):
     def get_occupied_spots_count(self):
         return self.spots.filter_by(status='O').count()
     
+    def get_reserved_spots_count(self):
+        return self.spots.filter_by(status='R').count()
+    
     def to_dict(self):
         """Return parking lot data as dictionary"""
         return {
@@ -84,6 +87,7 @@ class ParkingLot(db.Model):
             'number_of_spots': self.number_of_spots,
             'available_spots': self.get_available_spots_count(),
             'occupied_spots': self.get_occupied_spots_count(),
+            'reserved_spots': self.get_reserved_spots_count(),
             'is_active': self.is_active,
             'city': self.city,
             'state': self.state,
@@ -189,7 +193,14 @@ class Reservation(db.Model):
     
     def to_dict(self):
         """Return reservation data as dictionary"""
-        return {
+        lot_name = None
+        spot_number = None
+        if self.parking_spot:
+            spot_number = self.parking_spot.spot_number
+            if self.parking_spot.parking_lot:
+                lot_name = self.parking_spot.parking_lot.name
+
+        result = {
             'id': self.id,
             'spot_id': self.spot_id,
             'user_id': self.user_id,
@@ -199,8 +210,17 @@ class Reservation(db.Model):
             'check_out_timestamp': self.check_out_timestamp.isoformat() if self.check_out_timestamp else None,
             'parking_cost': self.parking_cost,
             'status': self.status,
-            'duration': self.get_duration_string() if self.check_in_timestamp or self.check_out_timestamp else None
+            'duration': self.get_duration_string() if self.check_in_timestamp or self.check_out_timestamp else None,
+            'lot_name': lot_name,
+            'spot_number': spot_number
         }
+        
+        # Include user details if user exists
+        if self.user:
+            result['username'] = self.user.username
+            result['user_email'] = self.user.email
+        
+        return result
     
     def __repr__(self):
         spot_info = self.parking_spot.spot_number if self.parking_spot else f"Deleted Spot (ID: {self.spot_id})"
