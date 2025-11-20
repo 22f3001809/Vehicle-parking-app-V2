@@ -25,11 +25,11 @@
 }
 
 .navbar-logo .logo-primary {
-  color: var(--color-text-primary);
+  color: #000000;
 }
 
 .navbar-logo .logo-secondary {
-  color: var(--color-primary);
+  color: #4285f4;
 }
 
 .navbar-nav {
@@ -158,11 +158,13 @@
 }
 
 .footer .logo-primary {
-  color: var(--color-text-primary);
+  color: #000000;
+  font-weight: var(--font-weight-bold);
 }
 
 .footer .logo-secondary {
-  color: var(--color-primary);
+  color: #4285f4;
+  font-weight: var(--font-weight-bold);
 }
 
 /* Alert Styles */

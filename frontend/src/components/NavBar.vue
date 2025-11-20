@@ -19,14 +19,6 @@
       <!-- Navigation Menu -->
       <div class="navbar-collapse" :class="{ show: isMobileMenuOpen }">
         <ul class="navbar-nav me-auto">
-          <!-- Home Link -->
-          <li class="nav-item">
-            <router-link :to="homeLink" class="nav-link" @click="closeMobileMenu">
-              <i class="fas fa-home me-1"></i>
-              Home
-            </router-link>
-          </li>
-          
           <!-- Authenticated User Links -->
           <template v-if="isAuthenticated">
             <!-- Admin Links -->

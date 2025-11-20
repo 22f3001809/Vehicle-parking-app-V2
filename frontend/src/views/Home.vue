@@ -1,148 +1,510 @@
 <template>
   <div class="home-page">
     <!-- Hero Section -->
-    <section class="hero bg-primary text-white py-5">
+    <section class="hero">
       <div class="container">
-        <div class="row align-items-center">
-          <div class="col-lg-6">
-            <h1 class="display-4 fw-bold mb-4">
-              <i class="bi bi-car-front-fill"></i>
-              Smart Parking Solutions
-            </h1>
-            <p class="lead mb-4">
-              Find, book, and manage parking spots effortlessly with our modern parking management system.
-            </p>
-            <div class="d-flex flex-wrap gap-3">
-              <router-link v-if="!isAuthenticated" to="/register" class="btn btn-light btn-lg">
-                Get Started
-              </router-link>
-              <router-link v-if="isAuthenticated && !isAdmin" to="/user/dashboard" class="btn btn-light btn-lg">
-                Go to Dashboard
-              </router-link>
-              <router-link v-if="isAuthenticated && isAdmin" to="/admin/dashboard" class="btn btn-light btn-lg">
-                Admin Dashboard
-              </router-link>
+        <div class="row">
+          <!-- Left/Center Side - Main Content -->
+          <div class="col-lg-7">
+            <div class="hero-content">
+              <!-- Brand Logo -->
+              <h1 class="brand-title">
+                <span class="brand-park">Park</span><span class="brand-nxt">Nxt</span>
+              </h1>
+              
+              <!-- Main Heading -->
+              <h2 class="main-heading">
+                Your seamless solution for smart parking management.
+              </h2>
+              
+              <!-- Tagline -->
+              <p class="tagline">
+                Find, book, and park effortlessly.
+              </p>
+              
+              <!-- CTA Buttons -->
+              <div class="cta-buttons">
+                <button 
+                  @click="authMode = 'login'" 
+                  class="btn btn-primary btn-lg px-4 me-3">
+                  Login
+                </button>
+                <button 
+                  @click="authMode = 'register'" 
+                  class="btn btn-outline-primary btn-lg px-4">
+                  Register
+                </button>
+              </div>
             </div>
           </div>
-          <div class="col-lg-6 text-center">
-            <i class="bi bi-p-square-fill" style="font-size: 12rem; opacity: 0.3;"></i>
+          
+          <!-- Right Side - Auth Forms -->
+          <div class="col-lg-5">
+            <div class="auth-card" v-if="authMode">
+              <!-- Login Form -->
+              <form v-if="authMode === 'login'" @submit.prevent="handleLogin" class="auth-form">
+                <h3 class="form-title">Welcome Back</h3>
+                <div class="mb-3">
+                  <label class="form-label">Username</label>
+                  <input 
+                    v-model="loginForm.username" 
+                    type="text" 
+                    class="form-control" 
+                    required
+                    placeholder="Enter your username">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Password</label>
+                  <input 
+                    v-model="loginForm.password" 
+                    type="password" 
+                    class="form-control" 
+                    required
+                    placeholder="Enter your password">
+                </div>
+                <button type="submit" class="btn btn-primary w-100" :disabled="loggingIn">
+                  <span v-if="loggingIn" class="spinner-border spinner-border-sm me-2"></span>
+                  {{ loggingIn ? 'Logging in...' : 'Login' }}
+                </button>
+                <p class="switch-mode">
+                  Don't have an account? 
+                  <a href="#" @click.prevent="authMode = 'register'">Register</a>
+                </p>
+              </form>
+
+              <!-- Register Form -->
+              <form v-if="authMode === 'register'" @submit.prevent="handleRegister" class="auth-form">
+                <h3 class="form-title">Create Account</h3>
+                <div class="mb-3">
+                  <label class="form-label">Full Name</label>
+                  <input 
+                    v-model="registerForm.full_name" 
+                    type="text" 
+                    class="form-control" 
+                    required
+                    placeholder="Enter your full name">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Username</label>
+                  <input 
+                    v-model="registerForm.username" 
+                    type="text" 
+                    class="form-control" 
+                    required
+                    placeholder="Choose a username">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Email</label>
+                  <input 
+                    v-model="registerForm.email" 
+                    type="email" 
+                    class="form-control" 
+                    required
+                    placeholder="Enter your email">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Password</label>
+                  <input 
+                    v-model="registerForm.password" 
+                    type="password" 
+                    class="form-control" 
+                    required
+                    placeholder="Create a password">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Confirm Password</label>
+                  <input 
+                    v-model="registerForm.confirm_password" 
+                    type="password" 
+                    class="form-control" 
+                    required
+                    placeholder="Confirm your password">
+                </div>
+                <button type="submit" class="btn btn-primary w-100" :disabled="registering">
+                  <span v-if="registering" class="spinner-border spinner-border-sm me-2"></span>
+                  {{ registering ? 'Creating Account...' : 'Register' }}
+                </button>
+                <p class="switch-mode">
+                  Already have an account? 
+                  <a href="#" @click.prevent="authMode = 'login'">Login</a>
+                </p>
+              </form>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Features Section -->
-    <section class="features py-5">
+    <section class="features-section">
       <div class="container">
-        <div class="row text-center mb-5">
-          <div class="col">
-            <h2 class="fw-bold">Why Choose Our Parking System?</h2>
-            <p class="text-muted">Modern features for seamless parking management</p>
-          </div>
-        </div>
+        <h2 class="section-title">Key Features</h2>
         
         <div class="row g-4">
-          <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-              <div class="card-body text-center p-4">
-                <i class="bi bi-search text-primary" style="font-size: 3rem;"></i>
-                <h5 class="card-title mt-3">Easy Search</h5>
-                <p class="card-text">Find available parking spots near your location with real-time availability.</p>
+          <div class="col-md-6">
+            <div class="feature-card">
+              <div class="feature-icon">
+                <i class="bi bi-geo-alt"></i>
               </div>
+              <h5 class="feature-title">Easy Spot Finding</h5>
+              <p class="feature-description">Locate available parking spots in real-time.</p>
             </div>
           </div>
           
-          <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-              <div class="card-body text-center p-4">
-                <i class="bi bi-calendar-check text-success" style="font-size: 3rem;"></i>
-                <h5 class="card-title mt-3">Quick Booking</h5>
-                <p class="card-text">Book parking spots instantly with automatic allocation and confirmation.</p>
+          <div class="col-md-6">
+            <div class="feature-card">
+              <div class="feature-icon">
+                <i class="bi bi-calendar-check"></i>
               </div>
-            </div>
-          </div>
-          
-          <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-              <div class="card-body text-center p-4">
-                <i class="bi bi-shield-check text-info" style="font-size: 3rem;"></i>
-                <h5 class="card-title mt-3">Secure & Reliable</h5>
-                <p class="card-text">Advanced security features with reliable payment processing and data protection.</p>
-              </div>
+              <h5 class="feature-title">Hassle-Free Booking</h5>
+              <p class="feature-description">Reserve your spot in advance with a few clicks.</p>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Call to Action (light theme only) -->
-    <section class="cta bg-light text-dark py-5" v-if="!isAuthenticated">
-      <div class="container text-center">
-        <div class="row">
-          <div class="col-lg-8 mx-auto">
-            <h2 class="fw-bold mb-4">Ready to Get Started?</h2>
-            <p class="lead mb-4">
-              Join thousands of users who trust our parking management system.
-            </p>
-            <div class="d-flex justify-content-center gap-3">
-              <router-link to="/register" class="btn btn-primary btn-lg">
-                Register Now
-              </router-link>
-              <router-link to="/login" class="btn btn-outline-secondary btn-lg">
-                Sign In
-              </router-link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   </div>
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapGetters, mapActions } from 'vuex'
 
 export default {
   name: 'Home',
+  data() {
+    return {
+      authMode: 'login', // 'login' or 'register'
+      loginForm: {
+        username: '',
+        password: ''
+      },
+      registerForm: {
+        full_name: '',
+        username: '',
+        email: '',
+        password: '',
+        confirm_password: ''
+      },
+      loggingIn: false,
+      registering: false
+    }
+  },
   computed: {
     ...mapGetters(['isAuthenticated', 'isAdmin'])
+  },
+  methods: {
+    ...mapActions(['setAlert']),
+    
+    async handleLogin() {
+      this.loggingIn = true
+      try {
+        const result = await this.$store.dispatch('auth/login', this.loginForm)
+        
+        if (result.success) {
+          // Redirect based on user role
+          if (result.user.is_admin) {
+            this.$router.push('/admin/dashboard')
+          } else {
+            this.$router.push('/user/dashboard')
+          }
+        }
+      } catch (error) {
+        console.error('Login error:', error)
+      } finally {
+        this.loggingIn = false
+      }
+    },
+    
+    async handleRegister() {
+      // Validate password match
+      if (this.registerForm.password !== this.registerForm.confirm_password) {
+        this.setAlert({
+          message: 'Passwords do not match',
+          type: 'error'
+        })
+        return
+      }
+      
+      this.registering = true
+      try {
+        // Remove confirm_password before sending to backend
+        const { confirm_password, ...registerData } = this.registerForm
+        
+        const result = await this.$store.dispatch('auth/register', registerData)
+        
+        if (result.success) {
+          // Redirect to user dashboard (new users are not admins)
+          this.$router.push('/user/dashboard')
+        }
+      } catch (error) {
+        console.error('Register error:', error)
+      } finally {
+        this.registering = false
+      }
+    }
+  },
+  
+  // Redirect if already authenticated
+  created() {
+    if (this.isAuthenticated) {
+      if (this.isAdmin) {
+        this.$router.push('/admin/dashboard')
+      } else {
+        this.$router.push('/user/dashboard')
+      }
+    }
   }
 }
 </script>
 
 <style scoped>
+.home-page {
+  background-color: #ffffff;
+  min-height: 100vh;
+}
+
+/* Hero Section */
 .hero {
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  background-color: #f8f9fa;
+  padding: 80px 0;
+  min-height: 85vh;
+  display: flex;
+  align-items: center;
 }
 
-.features .card {
-  transition: transform 0.3s ease;
+.hero-content {
+  padding: 40px 0;
 }
 
-.features .card:hover {
-  transform: translateY(-5px);
+/* Brand Title */
+.brand-title {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
 }
 
-.statistics .card {
+.brand-park {
+  color: #000000;
+}
+
+.brand-nxt {
+  color: #4285f4;
+}
+
+/* Main Heading */
+.main-heading {
+  font-size: 2rem;
+  font-weight: 400;
+  color: #5f6368;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+/* Tagline */
+.tagline {
+  font-size: 1.1rem;
+  color: #5f6368;
+  margin-bottom: 2.5rem;
+}
+
+/* CTA Buttons */
+.cta-buttons {
+  margin-top: 2rem;
+}
+
+.cta-buttons .btn {
+  border-radius: 4px;
+  font-weight: 500;
+  padding: 12px 32px;
+}
+
+.cta-buttons .btn-primary {
+  background-color: #4285f4;
+  border-color: #4285f4;
+}
+
+.cta-buttons .btn-primary:hover {
+  background-color: #3367d6;
+  border-color: #3367d6;
+}
+
+.cta-buttons .btn-outline-primary {
+  color: #4285f4;
+  border-color: #4285f4;
+}
+
+.cta-buttons .btn-outline-primary:hover {
+  background-color: #4285f4;
+  color: #ffffff;
+}
+
+/* Auth Card */
+.auth-card {
+  background-color: #ffffff;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  padding: 40px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  margin-top: 20px;
+}
+
+.auth-form {
+  width: 100%;
+}
+
+.form-title {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #202124;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.auth-card .form-label {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #5f6368;
+  margin-bottom: 0.5rem;
+}
+
+.auth-card .form-control {
+  padding: 12px 16px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.auth-card .form-control:focus {
+  border-color: #4285f4;
+  box-shadow: 0 0 0 0.2rem rgba(66, 133, 244, 0.15);
+}
+
+.auth-card .btn-primary {
+  background-color: #4285f4;
+  border-color: #4285f4;
+  padding: 12px;
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.auth-card .btn-primary:hover {
+  background-color: #3367d6;
+  border-color: #3367d6;
+}
+
+.switch-mode {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  color: #5f6368;
+}
+
+.switch-mode a {
+  color: #4285f4;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.switch-mode a:hover {
+  text-decoration: underline;
+}
+
+/* Features Section */
+.features-section {
+  background-color: #ffffff;
+  padding: 80px 0;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 500;
+  color: #4285f4;
+  margin-bottom: 3rem;
+}
+
+.feature-card {
+  text-align: center;
+  padding: 40px 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
   transition: all 0.3s ease;
 }
 
-.statistics .card:hover {
-  transform: scale(1.05);
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
+.feature-icon {
+  margin-bottom: 1.5rem;
+}
+
+.feature-icon i {
+  font-size: 3rem;
+  color: #4285f4;
+}
+
+.feature-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #4285f4;
+  margin-bottom: 1rem;
+}
+
+.feature-description {
+  font-size: 1rem;
+  color: #5f6368;
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
   .hero {
-    text-align: center;
+    padding: 60px 0;
   }
   
-  .hero .display-4 {
+  .hero-content {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  
+  .brand-title {
     font-size: 2.5rem;
   }
   
-  .hero i[style*="font-size: 12rem"] {
-    font-size: 6rem !important;
+  .main-heading {
+    font-size: 1.5rem;
+  }
+  
+  .cta-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .cta-buttons .btn {
+    width: 100%;
+    margin: 0 !important;
+  }
+  
+  .auth-card {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .brand-title {
+    font-size: 2rem;
+  }
+  
+  .main-heading {
+    font-size: 1.25rem;
+  }
+  
+  .auth-card {
+    padding: 30px 20px;
   }
 }
 </style>

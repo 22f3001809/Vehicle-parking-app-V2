@@ -5,12 +5,11 @@
         <div class="col-md-6">
           <p class="mb-0">
             <span class="logo-primary">Park</span><span class="logo-secondary">Nxt</span>
-            <span class="text-muted ms-2">- Smart Parking Solution</span>
           </p>
         </div>
         <div class="col-md-6 text-md-end">
           <p class="mb-0 text-muted">
-            &copy; {{ currentYear }} All rights reserved. Version 2.0
+            &copy; {{ currentYear }} ParkNxt. All rights reserved.
           </p>
         </div>
       </div>

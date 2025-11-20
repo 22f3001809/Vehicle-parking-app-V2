@@ -14,19 +14,18 @@ const routes = [
   {
     path: '/',
     name: 'Home',
-    component: Home
+    component: Home,
+    meta: { requiresGuest: true }
   },
   {
     path: '/login',
     name: 'Login',
-    component: Login,
-    meta: { requiresGuest: true }
+    redirect: '/' // Redirect to home which has login form
   },
   {
     path: '/register',
     name: 'Register',
-    component: Register,
-    meta: { requiresGuest: true }
+    redirect: '/' // Redirect to home which has register form
   },
   {
     path: '/parking-lots',
