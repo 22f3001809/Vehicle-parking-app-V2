@@ -3,10 +3,10 @@
     <div class="row">
       <div class="col-12">
         <div class="card shadow-sm">
-          <div class="card-header bg-success text-white">
+          <div class="card-header text-white" :class="user?.is_admin ? 'bg-primary' : 'bg-success'">
             <h4 class="mb-0">
               <i class="fas fa-user-circle me-2"></i>
-              My Profile
+              {{ user?.is_admin ? 'Admin Profile' : 'My Profile' }}
             </h4>
           </div>
           <div class="card-body">

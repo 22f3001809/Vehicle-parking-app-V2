@@ -2,7 +2,7 @@
   <div class="container py-4">
     <div class="row mb-4">
       <div class="col-12">
-        <h2 class="h3 mb-2"><i class="fas fa-parking me-2"></i>Book Parking Spot</h2>
+        <h2 class="h3 mb-2">Book Parking Spot</h2>
         <p class="text-muted mb-0">Reserve your parking spot</p>
       </div>
     </div>
@@ -12,14 +12,13 @@
         <div class="card shadow-sm h-100">
           <div class="card-header bg-primary text-white">
             <h5 class="mb-1">{{ parkingLot.name }}</h5>
-            <small class="d-block"><i class="fas fa-map-marker-alt me-1"></i>{{ parkingLot.address }}</small>
+            <small class="d-block">{{ parkingLot.address }}</small>
           </div>
           <div class="card-body">
             <div class="alert alert-info mb-4">
               <div class="row g-3">
                 <div class="col-6 col-md-6">
                   <div class="d-flex align-items-center">
-                    <i class="fas fa-parking fa-2x text-primary me-2"></i>
                     <div>
                       <small class="d-block text-muted">Available Spots</small>
                       <strong class="fs-5">{{ parkingLot.available_spots }} / {{ parkingLot.number_of_spots }}</strong>
@@ -28,7 +27,6 @@
                 </div>
                 <div class="col-6 col-md-6">
                   <div class="d-flex align-items-center">
-                    <i class="fas fa-rupee-sign fa-2x text-success me-2"></i>
                     <div>
                       <small class="d-block text-muted">Rate per Hour</small>
                       <strong class="fs-5">₹{{ parkingLot.price_per_hour }}</strong>
@@ -48,8 +46,48 @@
                          placeholder="e.g., MH 01 AB 1234" 
                          required
                          :class="{ 'is-invalid': errors.vehicleNumber }">
-                  <div class="form-text"><i class="fas fa-info-circle me-1"></i>Enter your vehicle registration number</div>
+                  <div class="form-text">Enter your vehicle registration number</div>
                   <div v-if="errors.vehicleNumber" class="invalid-feedback">{{ errors.vehicleNumber }}</div>
+                </div>
+              </div>
+              
+              <!-- Cost Estimator -->
+              <div class="row">
+                <div class="col-12 mb-4">
+                  <div class="card border-success">
+                    <div class="card-header bg-success bg-opacity-10">
+                      <h6 class="mb-0">Cost Estimator</h6>
+                    </div>
+                    <div class="card-body">
+                      <div class="row align-items-center">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                          <label class="form-label">Estimated Parking Duration (hours)</label>
+                          <input type="number" 
+                                 class="form-control" 
+                                 v-model.number="estimatedHours" 
+                                 min="1" 
+                                 step="0.5"
+                                 placeholder="Enter hours">
+                        </div>
+                        <div class="col-md-6">
+                          <div class="text-center p-3 bg-light rounded">
+                            <small class="d-block text-muted">Estimated Cost</small>
+                            <h4 class="mb-0 text-success">
+                              ₹{{ estimatedCost }}
+                            </h4>
+                            <small class="text-muted">
+                              ({{ estimatedHours }} hours × ₹{{ parkingLot.price_per_hour }}/hour)
+                            </small>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="alert alert-info mt-3 mb-0">
+                        <small>
+                          This is an estimate. Final cost will be calculated based on actual parking duration.
+                        </small>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -57,22 +95,18 @@
                 <button type="submit" 
                         class="btn btn-primary btn-lg flex-grow-1" 
                         :disabled="!booking.vehicleNumber || bookingLoading">
-                  <i class="fas fa-check-circle me-2"></i>
                   {{ bookingLoading ? 'Processing...' : 'Confirm Booking' }}
                 </button>
                 <router-link to="/parking-lots" class="btn btn-outline-secondary btn-lg">
-                  <i class="fas fa-arrow-left me-2"></i>
                   Back
                 </router-link>
               </div>
             </form>
             
             <div v-else class="text-center py-5">
-              <i class="fas fa-car text-danger fa-4x mb-3"></i>
               <h4 class="text-danger mb-3">No Available Spots</h4>
               <p class="text-muted mb-4">This parking lot is currently full. Please try another location.</p>
               <router-link to="/parking-lots" class="btn btn-primary btn-lg">
-                <i class="fas fa-search me-2"></i>
                 Find Another Lot
               </router-link>
             </div>
@@ -83,12 +117,11 @@
       <div class="col-12 col-lg-4">
         <div class="card shadow-sm h-100">
           <div class="card-header bg-light">
-            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Booking Details</h5>
+            <h5 class="mb-0">Booking Details</h5>
           </div>
           <div class="card-body">
             <div class="mb-4">
               <div class="d-flex align-items-start mb-2">
-                <i class="fas fa-map-marker-alt text-primary me-2 mt-1"></i>
                 <div>
                   <h6 class="mb-1 text-muted">Location</h6>
                   <p class="mb-0">{{ parkingLot.address }}</p>
@@ -99,7 +132,6 @@
             
             <div class="mb-4">
               <div class="d-flex align-items-start mb-2">
-                <i class="fas fa-rupee-sign text-success me-2 mt-1"></i>
                 <div>
                   <h6 class="mb-1 text-muted">Pricing</h6>
                   <p class="mb-0 fs-5 fw-bold text-success">₹{{ parkingLot.price_per_hour }}/hour</p>
@@ -112,7 +144,6 @@
             
             <div class="alert alert-warning mb-0">
               <small>
-                <i class="fas fa-exclamation-triangle me-1"></i>
                 <strong>Important:</strong> After booking, you must check in when you arrive at the parking lot to activate your reservation.
               </small>
             </div>
@@ -129,11 +160,9 @@
     </div>
     
     <div v-else class="text-center py-5">
-      <i class="fas fa-exclamation-triangle text-warning fa-3x mb-3"></i>
       <h4>Parking Lot Not Found</h4>
       <p class="text-muted">The requested parking lot could not be found or is no longer available.</p>
       <router-link to="/parking-lots" class="btn btn-primary">
-        <i class="fas fa-arrow-left me-2"></i>
         Back to Available Lots
       </router-link>
     </div>
@@ -153,7 +182,14 @@ export default {
       },
       loading: true,
       bookingLoading: false,
-      errors: {}
+      errors: {},
+      estimatedHours: 2
+    }
+  },
+  computed: {
+    estimatedCost() {
+      if (!this.parkingLot || !this.estimatedHours) return 0
+      return (this.parkingLot.price_per_hour * this.estimatedHours).toFixed(2)
     }
   },
   methods: {

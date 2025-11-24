@@ -14,6 +14,30 @@
         <h5 class="mb-0">All Users</h5>
       </div>
       <div class="card-body">
+        <!-- Search Controls -->
+        <div class="row mb-3">
+          <div class="col-md-3">
+            <label class="form-label">Search By:</label>
+            <select class="form-select" v-model="searchType">
+              <option value="username">Username</option>
+              <option value="location">Location (Pin Code)</option>
+            </select>
+          </div>
+          <div class="col-md-9">
+            <label class="form-label">Search String:</label>
+            <div class="input-group">
+              <input
+                type="text"
+                class="form-control"
+                v-model="searchQuery"
+                :placeholder="searchType === 'username' ? 'Search by username...' : 'Search by pin code...'"
+              >
+              <button class="btn btn-outline-secondary" @click="clearSearch" v-if="searchQuery">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
         <div v-if="loading" class="text-center py-4">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
@@ -34,6 +58,7 @@
                 <th>Full Name</th>
                 <th>Username</th>
                 <th>Email</th>
+                <th>Pin Code</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>Last Login</th>
@@ -42,7 +67,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="user in users" :key="user.id">
+              <tr v-for="user in filteredUsers" :key="user.id">
                 <td>
                   <span class="badge bg-secondary">{{ user.id }}</span>
                 </td>
@@ -53,6 +78,9 @@
                   <code>{{ user.username }}</code>
                 </td>
                 <td>{{ user.email }}</td>
+                <td>
+                  <span class="badge bg-info">{{ user.pin_code || 'N/A' }}</span>
+                </td>
                 <td>
                   <span :class="user.is_admin ? 'badge bg-danger' : 'badge bg-primary'">
                     {{ user.is_admin ? 'Admin' : 'User' }}
@@ -121,6 +149,12 @@
                     </div>
                     <div class="col-md-6 mb-2">
                       <strong>Phone:</strong> {{ selectedUser.phone_number || 'N/A' }}
+                    </div>
+                    <div class="col-md-6 mb-2">
+                      <strong>Pin Code:</strong> {{ selectedUser.pin_code || 'N/A' }}
+                    </div>
+                    <div class="col-md-12 mb-2">
+                      <strong>Address:</strong> {{ selectedUser.address || 'N/A' }}
                     </div>
                     <div class="col-md-6 mb-2">
                       <strong>Status:</strong>
@@ -207,7 +241,31 @@ export default {
       loading: true,
       selectedUser: null,
       userReservations: [],
-      loadingDetails: false
+      loadingDetails: false,
+      searchType: 'username',
+      searchQuery: ''
+    }
+  },
+  computed: {
+    filteredUsers() {
+      if (!this.searchQuery.trim()) {
+        return this.users
+      }
+      
+      const query = this.searchQuery.toLowerCase().trim()
+      
+      if (this.searchType === 'username') {
+        return this.users.filter(user => 
+          user.username.toLowerCase().includes(query) ||
+          user.full_name.toLowerCase().includes(query)
+        )
+      } else if (this.searchType === 'location') {
+        return this.users.filter(user => 
+          user.pin_code && user.pin_code.toLowerCase().includes(query)
+        )
+      }
+      
+      return this.users
     }
   },
   methods: {
@@ -256,6 +314,22 @@ export default {
     
     formatDateTime(dateString) {
       return this.$formatDateTime(dateString)
+    },
+    
+    clearSearch() {
+      this.searchQuery = ''
+    }
+  },
+  
+  watch: {
+    '$route.query': {
+      immediate: true,
+      handler(query) {
+        if (query.search && query.type) {
+          this.searchQuery = query.search
+          this.searchType = query.type
+        }
+      }
     }
   },
   

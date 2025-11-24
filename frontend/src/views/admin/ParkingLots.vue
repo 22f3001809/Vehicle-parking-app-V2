@@ -17,6 +17,34 @@
         <h5 class="mb-0">All Parking Lots</h5>
       </div>
       <div class="card-body">
+        <!-- Search Controls -->
+        <div class="row mb-3">
+          <div class="col-md-3">
+            <label class="form-label">Search By:</label>
+            <select class="form-select" v-model="searchType">
+              <option value="name">Parking Lot Name</option>
+              <option value="location">Location (City/Pin Code)</option>
+            </select>
+          </div>
+          <div class="col-md-9">
+            <label class="form-label">Search String:</label>
+            <div class="input-group">
+              <input
+                type="text"
+                class="form-control"
+                v-model="searchQuery"
+                :placeholder="searchType === 'name' ? 'Search by parking lot name...' : 'Search by city or pin code (e.g., Chennai, 600001)...'"
+              >
+              <button class="btn btn-outline-secondary" @click="clearSearch" v-if="searchQuery">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <small class="text-muted" v-if="searchQuery">
+              Showing {{ filteredParkingLots.length }} of {{ parkingLots.length }} parking lots
+            </small>
+          </div>
+        </div>
+        
         <div v-if="loading" class="text-center py-4">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
@@ -49,7 +77,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="lot in parkingLots" :key="lot.id">
+              <tr v-for="lot in filteredParkingLots" :key="lot.id">
                 <td>
                   <strong>{{ lot.name }}</strong>
                 </td>
@@ -129,7 +157,7 @@
               </div>
               
               <div class="row">
-                <div class="col-md-8 mb-3">
+                <div class="col-md-12 mb-3">
                   <label for="address" class="form-label">Address <span class="text-danger">*</span></label>
                   <textarea 
                     class="form-control" 
@@ -140,7 +168,33 @@
                     required></textarea>
                   <div v-if="errors.address" class="invalid-feedback">{{ errors.address }}</div>
                 </div>
+              </div>
+              
+              <div class="row">
+                <div class="col-md-5 mb-3">
+                  <label for="city" class="form-label">City <span class="text-danger">*</span></label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    id="city" 
+                    v-model="lotForm.city"
+                    :class="{ 'is-invalid': errors.city }"
+                    placeholder="e.g., Chennai"
+                    required>
+                  <div v-if="errors.city" class="invalid-feedback">{{ errors.city }}</div>
+                </div>
                 <div class="col-md-4 mb-3">
+                  <label for="state" class="form-label">State</label>
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    id="state" 
+                    v-model="lotForm.state"
+                    :class="{ 'is-invalid': errors.state }"
+                    placeholder="e.g., Tamil Nadu">
+                  <div v-if="errors.state" class="invalid-feedback">{{ errors.state }}</div>
+                </div>
+                <div class="col-md-3 mb-3">
                   <label for="pinCode" class="form-label">Pin Code <span class="text-danger">*</span></label>
                   <input 
                     type="text" 
@@ -252,15 +306,43 @@ export default {
       lotToDelete: null,
       saving: false,
       deleting: false,
+      searchType: 'name',
+      searchQuery: '',
       lotForm: {
         name: '',
         address: '',
+        city: '',
+        state: '',
         pin_code: '',
         number_of_spots: 10,
         price_per_hour: 5.00,
         is_active: true
       },
       errors: {}
+    }
+  },
+  
+  computed: {
+    filteredParkingLots() {
+      if (!this.searchQuery.trim()) {
+        return this.parkingLots
+      }
+      
+      const query = this.searchQuery.toLowerCase().trim()
+      
+      if (this.searchType === 'name') {
+        return this.parkingLots.filter(lot => 
+          lot.name.toLowerCase().includes(query)
+        )
+      } else if (this.searchType === 'location') {
+        return this.parkingLots.filter(lot => 
+          (lot.city && lot.city.toLowerCase().includes(query)) ||
+          (lot.pin_code && lot.pin_code.toLowerCase().includes(query)) ||
+          (lot.address && lot.address.toLowerCase().includes(query))
+        )
+      }
+      
+      return this.parkingLots
     }
   },
   
@@ -288,6 +370,8 @@ export default {
       this.lotForm = {
         name: lot.name,
         address: lot.address,
+        city: lot.city || '',
+        state: lot.state || '',
         pin_code: lot.pin_code,
         number_of_spots: lot.number_of_spots,
         price_per_hour: lot.price_per_hour,
@@ -384,12 +468,30 @@ export default {
       this.lotForm = {
         name: '',
         address: '',
+        city: '',
+        state: '',
         pin_code: '',
         number_of_spots: 10,
         price_per_hour: 5.00,
         is_active: true
       }
       this.errors = {}
+    },
+    
+    clearSearch() {
+      this.searchQuery = ''
+    }
+  },
+  
+  watch: {
+    '$route.query': {
+      immediate: true,
+      handler(query) {
+        if (query.search && query.type) {
+          this.searchQuery = query.search
+          this.searchType = query.type === 'location' ? 'location' : 'name'
+        }
+      }
     }
   },
   

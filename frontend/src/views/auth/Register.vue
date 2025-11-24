@@ -6,7 +6,6 @@
           <div class="card shadow">
             <div class="card-header bg-success text-white text-center py-4">
               <h3 class="mb-0">
-                <i class="bi bi-person-plus-fill me-2"></i>
                 Create Account
               </h3>
               <p class="mb-0 mt-2 opacity-75">Join our parking community</p>
@@ -17,7 +16,6 @@
                 <!-- Full Name -->
                 <div class="mb-3">
                   <label for="fullName" class="form-label">
-                    <i class="bi bi-person me-1"></i>
                     Full Name
                   </label>
                   <input
@@ -37,7 +35,6 @@
                 <!-- Username -->
                 <div class="mb-3">
                   <label for="username" class="form-label">
-                    <i class="bi bi-at me-1"></i>
                     Username
                   </label>
                   <input
@@ -60,7 +57,6 @@
                 <!-- Email -->
                 <div class="mb-3">
                   <label for="email" class="form-label">
-                    <i class="bi bi-envelope me-1"></i>
                     Email Address
                   </label>
                   <input
@@ -77,10 +73,52 @@
                   </div>
                 </div>
 
+                <!-- Address -->
+                <div class="mb-3">
+                  <label for="address" class="form-label">
+                    Address
+                  </label>
+                  <textarea
+                    class="form-control form-control-lg"
+                    id="address"
+                    v-model="form.address"
+                    :class="{ 'is-invalid': errors.address }"
+                    placeholder="Enter your full address"
+                    rows="2"
+                    required
+                  ></textarea>
+                  <div v-if="errors.address" class="invalid-feedback">
+                    {{ errors.address }}
+                  </div>
+                </div>
+
+                <!-- Pin Code -->
+                <div class="mb-3">
+                  <label for="pinCode" class="form-label">
+                    Pin Code
+                  </label>
+                  <input
+                    type="text"
+                    class="form-control form-control-lg"
+                    id="pinCode"
+                    v-model="form.pin_code"
+                    :class="{ 'is-invalid': errors.pin_code }"
+                    placeholder="Enter your pin code"
+                    pattern="[0-9]{6}"
+                    maxlength="6"
+                    required
+                  >
+                  <div v-if="errors.pin_code" class="invalid-feedback">
+                    {{ errors.pin_code }}
+                  </div>
+                  <div class="form-text">
+                    6-digit pin code
+                  </div>
+                </div>
+
                 <!-- Password -->
                 <div class="mb-3">
                   <label for="password" class="form-label">
-                    <i class="bi bi-lock me-1"></i>
                     Password
                   </label>
                   <div class="input-group">
@@ -112,7 +150,6 @@
                 <!-- Confirm Password -->
                 <div class="mb-3">
                   <label for="confirmPassword" class="form-label">
-                    <i class="bi bi-lock-fill me-1"></i>
                     Confirm Password
                   </label>
                   <div class="input-group">
@@ -168,7 +205,6 @@
                     Creating Account...
                   </span>
                   <span v-else>
-                    <i class="bi bi-person-plus me-2"></i>
                     Create Account
                   </span>
                 </button>
@@ -179,7 +215,6 @@
               <p class="mb-0">
                 Already have an account?
                 <router-link to="/login" class="text-decoration-none">
-                  <i class="bi bi-box-arrow-in-right me-1"></i>
                   Sign in here
                 </router-link>
               </p>
@@ -189,7 +224,6 @@
           <!-- Back to Home -->
           <div class="text-center mt-3">
             <router-link to="/" class="text-muted text-decoration-none">
-              <i class="bi bi-arrow-left me-1"></i>
               Back to Home
             </router-link>
           </div>
@@ -210,6 +244,8 @@ export default {
         full_name: '',
         username: '',
         email: '',
+        address: '',
+        pin_code: '',
         password: '',
         confirmPassword: '',
         agreeTerms: false
@@ -259,6 +295,24 @@ export default {
         isValid = false
       }
 
+      // Address validation
+      if (!this.form.address.trim()) {
+        this.errors.address = 'Address is required'
+        isValid = false
+      } else if (this.form.address.trim().length < 10) {
+        this.errors.address = 'Address must be at least 10 characters'
+        isValid = false
+      }
+
+      // Pin code validation
+      if (!this.form.pin_code.trim()) {
+        this.errors.pin_code = 'Pin code is required'
+        isValid = false
+      } else if (!/^[0-9]{6}$/.test(this.form.pin_code)) {
+        this.errors.pin_code = 'Pin code must be 6 digits'
+        isValid = false
+      }
+
       // Password validation
       if (!this.form.password) {
         this.errors.password = 'Password is required'
@@ -296,6 +350,8 @@ export default {
           full_name: this.form.full_name.trim(),
           username: this.form.username.trim().toLowerCase(),
           email: this.form.email.trim().toLowerCase(),
+          address: this.form.address.trim(),
+          pin_code: this.form.pin_code.trim(),
           password: this.form.password
         })
         

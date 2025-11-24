@@ -1,6 +1,6 @@
 <template>
   <div class="container-fluid py-4">
-    <h2><i class="fas fa-calendar-check me-2"></i>My Reservations</h2>
+    <h2>My Reservations</h2>
     <p class="text-muted">View and manage your parking reservations</p>
     
     <div class="card shadow-sm">
@@ -32,10 +32,9 @@
               </tr>
               <tr v-else-if="reservations.length === 0">
                 <td colspan="10" class="text-center py-5">
-                  <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
                   <p class="text-muted">No reservations found</p>
                   <router-link to="/parking-lots" class="btn btn-primary mt-2">
-                    <i class="fas fa-plus me-2"></i>Book Your First Parking
+                    Book Your First Parking
                   </router-link>
                 </td>
               </tr>

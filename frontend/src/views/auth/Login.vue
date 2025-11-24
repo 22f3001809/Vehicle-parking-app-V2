@@ -6,7 +6,6 @@
           <div class="card shadow">
             <div class="card-header bg-primary text-white text-center py-4">
               <h3 class="mb-0">
-                <i class="bi bi-car-front-fill me-2"></i>
                 Sign In
               </h3>
               <p class="mb-0 mt-2 opacity-75">Access your parking account</p>
@@ -17,7 +16,6 @@
                 <!-- Username -->
                 <div class="mb-3">
                   <label for="username" class="form-label">
-                    <i class="bi bi-person-fill me-1"></i>
                     Username
                   </label>
                   <input
@@ -37,7 +35,6 @@
                 <!-- Password -->
                 <div class="mb-3">
                   <label for="password" class="form-label">
-                    <i class="bi bi-lock-fill me-1"></i>
                     Password
                   </label>
                   <div class="input-group">
@@ -88,7 +85,6 @@
                     Signing In...
                   </span>
                   <span v-else>
-                    <i class="bi bi-box-arrow-in-right me-2"></i>
                     Sign In
                   </span>
                 </button>
@@ -99,7 +95,6 @@
               <p class="mb-0">
                 Don't have an account?
                 <router-link to="/register" class="text-decoration-none">
-                  <i class="bi bi-person-plus me-1"></i>
                   Register here
                 </router-link>
               </p>
@@ -109,7 +104,6 @@
           <!-- Back to Home -->
           <div class="text-center mt-3">
             <router-link to="/" class="text-muted text-decoration-none">
-              <i class="bi bi-arrow-left me-1"></i>
               Back to Home
             </router-link>
           </div>

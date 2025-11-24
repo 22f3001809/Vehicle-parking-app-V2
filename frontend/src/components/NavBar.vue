@@ -24,27 +24,70 @@
             <!-- Admin Links -->
             <template v-if="user?.is_admin">
               <li class="nav-item">
+                <router-link to="/admin/dashboard" class="nav-link" @click="closeMobileMenu">
+                  Home
+                </router-link>
+              </li>
+              <li class="nav-item">
                 <router-link to="/admin/parking-lots" class="nav-link" @click="closeMobileMenu">
                   <i class="fas fa-parking me-1"></i>
-                  Manage Lots
+                  Parking Lots
                 </router-link>
               </li>
               <li class="nav-item">
                 <router-link to="/admin/users" class="nav-link" @click="closeMobileMenu">
                   <i class="fas fa-users me-1"></i>
-                  View Users
+                  Users
                 </router-link>
+              </li>
+              <li class="nav-item dropdown search-dropdown">
+                <a 
+                  class="nav-link dropdown-toggle" 
+                  href="#" 
+                  @click.prevent="toggleSearchDropdown"
+                  role="button"
+                >
+                  <i class="fas fa-search me-1"></i>
+                  Search
+                </a>
+                <div class="dropdown-menu search-menu" :class="{ show: isSearchDropdownOpen }">
+                  <div class="search-container p-3">
+                    <div class="mb-2">
+                      <label class="form-label small">Search By:</label>
+                      <select class="form-select form-select-sm" v-model="adminSearchType">
+                        <option value="username">Username</option>
+                        <option value="parking_lot">Parking Lot Location</option>
+                      </select>
+                    </div>
+                    <div class="input-group input-group-sm">
+                      <input
+                        type="text"
+                        class="form-control"
+                        v-model="adminSearchQuery"
+                        :placeholder="adminSearchType === 'username' ? 'Search users...' : 'Search by city/pin code...'"
+                        @keyup.enter="performAdminSearch"
+                      >
+                      <button class="btn btn-primary" @click="performAdminSearch">
+                        <i class="fas fa-search"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </li>
               <li class="nav-item">
                 <router-link to="/admin/reports" class="nav-link" @click="closeMobileMenu">
-                  <i class="fas fa-chart-bar me-1"></i>
-                  Reports
+                  Summary
                 </router-link>
               </li>
             </template>
             
             <!-- Regular User Links -->
             <template v-else>
+              <li class="nav-item">
+                <router-link to="/user/dashboard" class="nav-link" @click="closeMobileMenu">
+                  Home
+                </router-link>
+              </li>
               <li class="nav-item">
                 <router-link to="/parking-lots" class="nav-link" @click="closeMobileMenu">
                   <i class="fas fa-search me-1"></i>
@@ -77,16 +120,9 @@
             <ul class="dropdown-menu" :class="{ show: isDropdownOpen }">
               <li>
                 <router-link 
-                  :to="user?.is_admin ? '/admin/dashboard' : '/user/dashboard'" 
-                  class="dropdown-item"
-                  @click="closeDropdown"
-                >
-                  <i class="fas fa-tachometer-alt me-2"></i>
-                  Dashboard
-                </router-link>
-              </li>
-              <li v-if="!user?.is_admin">
-                <router-link to="/profile" class="dropdown-item" @click="closeDropdown">
+                  :to="user?.is_admin ? '/admin/profile' : '/profile'" 
+                  class="dropdown-item" 
+                  @click="closeDropdown">
                   <i class="fas fa-user-edit me-2"></i>
                   Profile
                 </router-link>
@@ -107,13 +143,11 @@
           <template v-else>
             <li class="nav-item">
               <router-link to="/login" class="nav-link" @click="closeMobileMenu">
-                <i class="fas fa-sign-in-alt me-1"></i>
                 Login
               </router-link>
             </li>
             <li class="nav-item">
               <router-link to="/register" class="nav-link" @click="closeMobileMenu">
-                <i class="fas fa-user-plus me-1"></i>
                 Register
               </router-link>
             </li>
@@ -132,7 +166,10 @@ export default {
   data() {
     return {
       isDropdownOpen: false,
-      isMobileMenuOpen: false
+      isMobileMenuOpen: false,
+      isSearchDropdownOpen: false,
+      adminSearchType: 'username',
+      adminSearchQuery: ''
     }
   },
   computed: {
@@ -161,6 +198,38 @@ export default {
     closeMobileMenu() {
       this.isMobileMenuOpen = false
     },
+    toggleSearchDropdown() {
+      this.isSearchDropdownOpen = !this.isSearchDropdownOpen
+    },
+    closeSearchDropdown() {
+      this.isSearchDropdownOpen = false
+    },
+    performAdminSearch() {
+      if (!this.adminSearchQuery.trim()) {
+        this.$store.dispatch('setAlert', {
+          message: 'Please enter a search term',
+          type: 'warning'
+        })
+        return
+      }
+      
+      if (this.adminSearchType === 'username') {
+        // Navigate to users page with search query
+        this.$router.push({
+          path: '/admin/users',
+          query: { search: this.adminSearchQuery, type: 'username' }
+        })
+      } else {
+        // Navigate to parking lots page with location search
+        this.$router.push({
+          path: '/admin/parking-lots',
+          query: { search: this.adminSearchQuery, type: 'location' }
+        })
+      }
+      
+      this.closeSearchDropdown()
+      this.closeMobileMenu()
+    },
     async handleLogout() {
       try {
         await this.$store.dispatch('auth/logout')
@@ -182,9 +251,14 @@ export default {
   mounted() {
     // Close dropdown when clicking outside
     document.addEventListener('click', (event) => {
-      const dropdown = this.$el.querySelector('.dropdown')
-      if (dropdown && !dropdown.contains(event.target)) {
+      const userDropdown = this.$el.querySelector('.nav-item.dropdown:not(.search-dropdown)')
+      if (userDropdown && !userDropdown.contains(event.target)) {
         this.isDropdownOpen = false
+      }
+      
+      const searchDropdown = this.$el.querySelector('.search-dropdown')
+      if (searchDropdown && !searchDropdown.contains(event.target)) {
+        this.isSearchDropdownOpen = false
       }
     })
   }
@@ -216,6 +290,36 @@ export default {
 @media (max-width: 768px) {
   .text-md-end {
     text-align: left;
+  }
+}
+
+/* Search dropdown styles */
+.search-dropdown {
+  position: relative;
+}
+
+.search-menu {
+  min-width: 300px;
+  padding: 0;
+}
+
+.search-container {
+  background: white;
+  border-radius: 0.375rem;
+}
+
+.search-dropdown .dropdown-menu {
+  left: 0;
+  right: auto;
+}
+
+@media (max-width: 991px) {
+  .search-menu {
+    position: static !important;
+    transform: none !important;
+    width: 100%;
+    border: none;
+    box-shadow: none;
   }
 }
 </style>
