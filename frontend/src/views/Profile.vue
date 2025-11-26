@@ -6,7 +6,7 @@
           <div class="card-header text-white" :class="user?.is_admin ? 'bg-primary' : 'bg-success'">
             <h4 class="mb-0">
               <i class="fas fa-user-circle me-2"></i>
-              {{ user?.is_admin ? 'Admin Profile' : 'My Profile' }}
+              {{ user?.is_admin ? 'Admin Profile' : 'Edit Profile' }}
             </h4>
           </div>
           <div class="card-body">
@@ -47,6 +47,22 @@
               </div>
               <div class="row">
                 <div class="col-md-6 mb-3">
+                  <label for="address" class="form-label">Address</label>
+                  <input type="text" 
+                         class="form-control" 
+                         id="address" 
+                         v-model="profile.address">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="pincode" class="form-label">Pin Code</label>
+                  <input type="text" 
+                         class="form-control" 
+                         id="pincode" 
+                         v-model="profile.pincode">
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3">
                   <label for="phone" class="form-label">Phone Number</label>
                   <input type="tel" 
                          class="form-control" 
@@ -80,7 +96,6 @@
               </div>
             </form>
 
-            <!-- Change Password Section -->
             <div v-if="showChangePassword" class="mt-4 pt-4 border-top">
               <h5>Change Password</h5>
               <form @submit.prevent="changePassword">
@@ -137,6 +152,8 @@ export default {
         email: '',
         firstName: '',
         lastName: '',
+        address: '', 
+        pincode: '', 
         phone: '',
         vehicleNumber: ''
       },
@@ -157,14 +174,21 @@ export default {
     ...mapActions(['setAlert']),
     async updateProfile() {
       this.loading = true
+      
+      // Construct the full name from first and last name
+      const fullName = `${this.profile.firstName} ${this.profile.lastName}`.trim()
+
       try {
         const response = await this.$api.user.updateProfile({
-          full_name: `${this.profile.firstName} ${this.profile.lastName}`.trim(),
+          full_name: fullName,
           email: this.profile.email,
-          phone_number: this.profile.phone
+          phone_number: this.profile.phone,
+          address: this.profile.address, 
+          pincode: this.profile.pincode, 
+          vehicle_number: this.profile.vehicleNumber 
         })
         
-        // Update user in store
+        // Update user in store with the new data
         this.$store.commit('auth/SET_USER', response.data.user)
         
         this.setAlert({
@@ -228,12 +252,17 @@ export default {
     },
     loadProfile() {
       if (this.user) {
-        const nameParts = (this.user.full_name || '').split(' ')
+        const nameParts = (this.user.full_name || '').trim().split(/\s+/)
+        const firstName = nameParts[0] || ''
+        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''
+        
         this.profile = {
-          username: this.user.username,
-          email: this.user.email,
-          firstName: nameParts[0] || '',
-          lastName: nameParts.slice(1).join(' ') || '',
+          username: this.user.username || '',
+          email: this.user.email || '',
+          firstName: firstName,
+          lastName: lastName,
+          address: this.user.address || '', 
+          pincode: this.user.pin_code || '', 
           phone: this.user.phone_number || '',
           vehicleNumber: this.user.vehicle_number || ''
         }
@@ -244,7 +273,10 @@ export default {
     this.loadProfile()
   },
   watch: {
-    user: 'loadProfile'
+    user: {
+      handler: 'loadProfile',
+      immediate: true // Load profile immediately if 'user' is already available
+    }
   }
 }
 </script>

@@ -41,94 +41,8 @@
           <!-- Right Side - Auth Forms -->
           <div class="col-lg-5">
             <div class="auth-card" v-if="authMode">
-              <!-- Login Form -->
-              <form v-if="authMode === 'login'" @submit.prevent="handleLogin" class="auth-form">
-                <h3 class="form-title">Welcome Back</h3>
-                <div class="mb-3">
-                  <label class="form-label">Username</label>
-                  <input 
-                    v-model="loginForm.username" 
-                    type="text" 
-                    class="form-control" 
-                    required
-                    placeholder="Enter your username">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Password</label>
-                  <input 
-                    v-model="loginForm.password" 
-                    type="password" 
-                    class="form-control" 
-                    required
-                    placeholder="Enter your password">
-                </div>
-                <button type="submit" class="btn btn-primary w-100" :disabled="loggingIn">
-                  <span v-if="loggingIn" class="spinner-border spinner-border-sm me-2"></span>
-                  {{ loggingIn ? 'Logging in...' : 'Login' }}
-                </button>
-                <p class="switch-mode">
-                  Don't have an account? 
-                  <a href="#" @click.prevent="authMode = 'register'">Register</a>
-                </p>
-              </form>
-
-              <!-- Register Form -->
-              <form v-if="authMode === 'register'" @submit.prevent="handleRegister" class="auth-form">
-                <h3 class="form-title">Create Account</h3>
-                <div class="mb-3">
-                  <label class="form-label">Full Name</label>
-                  <input 
-                    v-model="registerForm.full_name" 
-                    type="text" 
-                    class="form-control" 
-                    required
-                    placeholder="Enter your full name">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Username</label>
-                  <input 
-                    v-model="registerForm.username" 
-                    type="text" 
-                    class="form-control" 
-                    required
-                    placeholder="Choose a username">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Email</label>
-                  <input 
-                    v-model="registerForm.email" 
-                    type="email" 
-                    class="form-control" 
-                    required
-                    placeholder="Enter your email">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Password</label>
-                  <input 
-                    v-model="registerForm.password" 
-                    type="password" 
-                    class="form-control" 
-                    required
-                    placeholder="Create a password">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Confirm Password</label>
-                  <input 
-                    v-model="registerForm.confirm_password" 
-                    type="password" 
-                    class="form-control" 
-                    required
-                    placeholder="Confirm your password">
-                </div>
-                <button type="submit" class="btn btn-primary w-100" :disabled="registering">
-                  <span v-if="registering" class="spinner-border spinner-border-sm me-2"></span>
-                  {{ registering ? 'Creating Account...' : 'Register' }}
-                </button>
-                <p class="switch-mode">
-                  Already have an account? 
-                  <a href="#" @click.prevent="authMode = 'login'">Login</a>
-                </p>
-              </form>
+              <Login v-if="authMode === 'login'" @switch-mode="switchAuthMode" />
+              <Register v-if="authMode === 'register'" @switch-mode="switchAuthMode" />
             </div>
           </div>
         </div>
@@ -168,80 +82,27 @@
 </template>
 
 <script>
-import { mapGetters, mapActions } from 'vuex'
+import { mapGetters } from 'vuex'
+import Login from './auth/Login.vue'
+import Register from './auth/Register.vue'
 
 export default {
   name: 'Home',
+  components: {
+    Login,
+    Register
+  },
   data() {
     return {
-      authMode: 'login', // 'login' or 'register'
-      loginForm: {
-        username: '',
-        password: ''
-      },
-      registerForm: {
-        full_name: '',
-        username: '',
-        email: '',
-        password: '',
-        confirm_password: ''
-      },
-      loggingIn: false,
-      registering: false
+      authMode: 'login' // 'login' or 'register'
     }
   },
   computed: {
     ...mapGetters(['isAuthenticated', 'isAdmin'])
   },
   methods: {
-    ...mapActions(['setAlert']),
-    
-    async handleLogin() {
-      this.loggingIn = true
-      try {
-        const result = await this.$store.dispatch('auth/login', this.loginForm)
-        
-        if (result.success) {
-          // Redirect based on user role
-          if (result.user.is_admin) {
-            this.$router.push('/admin/dashboard')
-          } else {
-            this.$router.push('/user/dashboard')
-          }
-        }
-      } catch (error) {
-        console.error('Login error:', error)
-      } finally {
-        this.loggingIn = false
-      }
-    },
-    
-    async handleRegister() {
-      // Validate password match
-      if (this.registerForm.password !== this.registerForm.confirm_password) {
-        this.setAlert({
-          message: 'Passwords do not match',
-          type: 'error'
-        })
-        return
-      }
-      
-      this.registering = true
-      try {
-        // Remove confirm_password before sending to backend
-        const { confirm_password, ...registerData } = this.registerForm
-        
-        const result = await this.$store.dispatch('auth/register', registerData)
-        
-        if (result.success) {
-          // Redirect to user dashboard (new users are not admins)
-          this.$router.push('/user/dashboard')
-        }
-      } catch (error) {
-        console.error('Register error:', error)
-      } finally {
-        this.registering = false
-      }
+    switchAuthMode(mode) {
+      this.authMode = mode
     }
   },
   
@@ -346,69 +207,10 @@ export default {
   border-radius: 8px;
   padding: 40px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  margin-top: 20px;
+  margin-top: -20px;
 }
 
-.auth-form {
-  width: 100%;
-}
 
-.form-title {
-  font-size: 1.5rem;
-  font-weight: 500;
-  color: #202124;
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.auth-card .form-label {
-  font-weight: 500;
-  font-size: 0.875rem;
-  color: #5f6368;
-  margin-bottom: 0.5rem;
-}
-
-.auth-card .form-control {
-  padding: 12px 16px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  font-size: 0.875rem;
-}
-
-.auth-card .form-control:focus {
-  border-color: #4285f4;
-  box-shadow: 0 0 0 0.2rem rgba(66, 133, 244, 0.15);
-}
-
-.auth-card .btn-primary {
-  background-color: #4285f4;
-  border-color: #4285f4;
-  padding: 12px;
-  font-weight: 500;
-  margin-top: 0.5rem;
-}
-
-.auth-card .btn-primary:hover {
-  background-color: #3367d6;
-  border-color: #3367d6;
-}
-
-.switch-mode {
-  text-align: center;
-  margin-top: 1.5rem;
-  font-size: 0.875rem;
-  color: #5f6368;
-}
-
-.switch-mode a {
-  color: #4285f4;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.switch-mode a:hover {
-  text-decoration: underline;
-}
 
 /* Features Section */
 .features-section {

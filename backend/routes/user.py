@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from models import db, User, ParkingLot, ParkingSpot, Reservation
 from datetime import datetime
 from functools import wraps
+import pytz
 
 user_bp = Blueprint('user', __name__, url_prefix='/api/user')
 
@@ -109,14 +110,17 @@ def book_parking_spot(lot_id):
     if not data or not data.get('vehicle_number'):
         return jsonify({'error': 'Vehicle number is required'}), 400
     
-    # Check if user already has an active or pending reservation
-    existing = Reservation.query.filter(
+    # Check if this specific vehicle already has an active reservation
+    vehicle_number = data['vehicle_number'].strip().upper()
+    
+    vehicle_reservation = Reservation.query.filter(
         Reservation.user_id == current_user_id,
+        Reservation.vehicle_number == vehicle_number,
         Reservation.status.in_(['pending', 'active'])
     ).first()
     
-    if existing:
-        return jsonify({'error': 'You already have an active reservation'}), 400
+    if vehicle_reservation:
+        return jsonify({'error': f'This vehicle ({vehicle_number}) already has an active reservation'}), 400
     
     # Find first available spot in the lot (automatic allocation)
     spot = ParkingSpot.query.filter_by(
@@ -131,7 +135,7 @@ def book_parking_spot(lot_id):
     reservation = Reservation(
         spot_id=spot.id,
         user_id=current_user_id,
-        vehicle_number=data['vehicle_number'],
+        vehicle_number=vehicle_number,
         status='pending'
     )
     
@@ -343,6 +347,10 @@ def update_profile():
         user.email = data['email']
     if 'phone_number' in data:
         user.phone_number = data['phone_number']
+    if 'address' in data:
+        user.address = data['address']
+    if 'pincode' in data:
+        user.pin_code = data['pincode']
     
     db.session.commit()
     
@@ -419,6 +427,10 @@ def get_checkout_details(reservation_id):
         duration_str = f"{minutes}m"
 
     return jsonify({
-        'cost': round(cost, 2),
-        'duration': duration_str
+        'spot_id': reservation.parking_spot.spot_number if reservation.parking_spot else 'N/A',
+        'vehicle_number': reservation.vehicle_number,
+        'check_in_time': reservation.check_in_timestamp.strftime('%Y-%m-%d %H:%M:%S') if reservation.check_in_timestamp else 'N/A',
+        'check_out_time': simulated_check_out_time.strftime('%Y-%m-%d %H:%M:%S'),
+        'duration': duration_str,
+        'cost': round(cost, 2)
     }), 200

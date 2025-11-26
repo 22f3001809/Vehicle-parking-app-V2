@@ -38,11 +38,16 @@
                   </router-link>
                 </td>
               </tr>
-              <tr v-else v-for="reservation in reservations" :key="reservation.id">
+              <tr v-else v-for="reservation in reservations" :key="reservation.id" 
+                  :class="{'table-active': reservation.status === 'active'}">
                 <td>{{ reservation.id }}</td>
-                <td>{{ reservation.lot_name || 'N/A' }}</td>
                 <td>
-                  <span class="badge bg-secondary">{{ reservation.spot_number || 'N/A' }}</span>
+                  {{ reservation.lot_name }}
+                  <small v-if="reservation.lot_deleted" class="text-danger d-block">(Inactive/Deleted)</small>
+                </td>
+                <td>
+                  <span class="badge bg-secondary">{{ reservation.spot_number }}</span>
+                  <small v-if="reservation.spot_deleted" class="text-danger d-block" style="font-size: 0.7rem;">(Deleted)</small>
                 </td>
                 <td>{{ reservation.vehicle_number }}</td>
                 <td>{{ formatDateTime(reservation.booking_timestamp) }}</td>
@@ -59,32 +64,35 @@
                   <span v-else class="text-muted">-</span>
                 </td>
                 <td>
-                  <span :class="getStatusBadgeClass(reservation.status)" class="badge">
+                  <span :class="getStatusBadgeClass(reservation.status)" class="badge text-capitalize">
                     {{ reservation.status }}
                   </span>
                 </td>
                 <td>{{ reservation.parking_cost ? '₹' + reservation.parking_cost : '-' }}</td>
-                <td class="text-nowrap">
+                <td class="text-nowrap" @click.stop>
                   <!-- Pending: Can Check In or Cancel -->
                   <button v-if="reservation.status === 'pending'" 
-                          class="btn btn-sm btn-success me-1"
+                          class="btn btn-xs btn-success me-1 px-2 py-1"
+                          style="font-size: 0.75rem;"
                           @click="checkIn(reservation.id)"
                           :disabled="processing">
-                    <i class="fas fa-sign-in-alt me-1"></i>Check In
+                    Check In
                   </button>
                   <button v-if="reservation.status === 'pending'" 
-                          class="btn btn-sm btn-outline-danger"
+                          class="btn btn-xs btn-outline-danger px-2 py-1"
+                          style="font-size: 0.75rem;"
                           @click="cancelReservation(reservation.id)"
                           :disabled="processing">
-                    <i class="fas fa-times me-1"></i>Cancel
+                    Cancel
                   </button>
                   
-                  <!-- Active: Can Check Out -->
+                  <!-- Active: Can Park Out -->
                   <button v-if="reservation.status === 'active'" 
-                          class="btn btn-sm btn-primary"
+                          class="btn btn-xs btn-primary px-2 py-1"
+                          style="font-size: 0.75rem;"
                           @click="checkOut(reservation.id)"
                           :disabled="processing">
-                    <i class="fas fa-sign-out-alt me-1"></i>Check Out
+                    Park Out
                   </button>
                   
                   <!-- Completed/Cancelled: No actions -->
@@ -99,19 +107,59 @@
         </div>
       </div>
     </div>
-    <CheckoutModal :details="checkoutDetails" @confirmed="confirmCheckout" />
+    <!-- Checkout Confirmation Modal -->
+    <div class="modal fade" id="checkoutModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirm Park Out</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info">
+              <h6 class="mb-3">Parking Summary</h6>
+              <div class="row">
+                <div class="col-6"><strong>Spot:</strong></div>
+                <div class="col-6">{{ checkoutDetails.spot_id }}</div>
+              </div>
+              <div class="row">
+                <div class="col-6"><strong>Vehicle:</strong></div>
+                <div class="col-6">{{ checkoutDetails.vehicle_number }}</div>
+              </div>
+              <div class="row">
+                <div class="col-6"><strong>Check-in:</strong></div>
+                <div class="col-6">{{ checkoutDetails.check_in_time }}</div>
+              </div>
+              <div class="row">
+                <div class="col-6"><strong>Duration:</strong></div>
+                <div class="col-6">{{ checkoutDetails.duration }}</div>
+              </div>
+              <hr>
+              <div class="row">
+                <div class="col-6"><strong class="fs-5">Total Cost:</strong></div>
+                <div class="col-6"><strong class="fs-5 text-success">₹{{ checkoutDetails.cost }}</strong></div>
+              </div>
+            </div>
+            <p class="mb-0">Are you sure you want to park out?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="confirmCheckout" :disabled="processing">
+              <span v-if="processing" class="spinner-border spinner-border-sm me-1"></span>
+              Confirm Park Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import CheckoutModal from '@/components/CheckoutModal.vue';
 import { Modal } from 'bootstrap';
 
 export default {
   name: 'UserReservations',
-  components: {
-    CheckoutModal
-  },
   data() {
     return {
       reservations: [],
@@ -257,5 +305,17 @@ export default {
 .btn-sm {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.table-active {
+  background-color: rgba(13, 110, 253, 0.05) !important;
+}
+
+tr.cursor-pointer:hover {
+  background-color: rgba(13, 110, 253, 0.1) !important;
 }
 </style>

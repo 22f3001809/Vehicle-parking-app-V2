@@ -5,7 +5,6 @@ import store from '@/store'
 import Home from '@/views/Home.vue'
 import Login from '@/views/auth/Login.vue'
 import Register from '@/views/auth/Register.vue'
-import ParkingLots from '@/views/ParkingLots.vue'
 import UserDashboard from '@/views/user/Dashboard.vue'
 import AdminDashboard from '@/views/admin/Dashboard.vue'
 import Profile from '@/views/Profile.vue'
@@ -26,11 +25,6 @@ const routes = [
     path: '/register',
     name: 'Register',
     redirect: '/' // Redirect to home which has register form
-  },
-  {
-    path: '/parking-lots',
-    name: 'ParkingLots',
-    component: ParkingLots
   },
   {
     path: '/profile',

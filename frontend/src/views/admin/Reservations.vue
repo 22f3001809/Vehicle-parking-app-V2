@@ -21,21 +21,39 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="reservation in reservations" :key="reservation.id">
+              <tr v-if="loading">
+                <td colspan="9" class="text-center py-4">
+                  <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                </td>
+              </tr>
+              <tr v-else-if="reservations.length === 0">
+                <td colspan="9" class="text-center py-4 text-muted">
+                  No reservations found
+                </td>
+              </tr>
+              <tr v-else v-for="reservation in reservations" :key="reservation.id">
                 <td>{{ reservation.id }}</td>
-                <td>{{ reservation.user.username }}</td>
-                <td>{{ reservation.parking_lot.name }}</td>
-                <td>{{ reservation.spot.number }}</td>
-                <td>{{ formatDateTime(reservation.start_time) }}</td>
-                <td>{{ formatDateTime(reservation.end_time) }}</td>
+                <td>{{ reservation.username || 'N/A' }}</td>
+                <td>
+                  {{ reservation.lot_name }}
+                  <small v-if="reservation.lot_deleted" class="text-danger d-block">(Inactive/Deleted)</small>
+                </td>
+                <td>
+                  {{ reservation.spot_number }}
+                  <small v-if="reservation.spot_deleted" class="text-danger d-block" style="font-size: 0.7rem;">(Deleted)</small>
+                </td>
+                <td>{{ formatDateTime(reservation.booking_timestamp) }}</td>
+                <td>{{ reservation.check_out_timestamp ? formatDateTime(reservation.check_out_timestamp) : '-' }}</td>
                 <td>
                   <span :class="getStatusBadgeClass(reservation.status)" class="badge">
                     {{ reservation.status }}
                   </span>
                 </td>
-                <td>₹{{ reservation.total_amount }}</td>
+                <td>{{ reservation.parking_cost ? '₹' + reservation.parking_cost : '-' }}</td>
                 <td>
-                  <button class="btn btn-sm btn-outline-primary">
+                  <button class="btn btn-sm btn-outline-info">
                     <i class="fas fa-eye"></i>
                   </button>
                 </td>
@@ -49,17 +67,39 @@
 </template>
 
 <script>
+import { mapActions } from 'vuex'
+
 export default {
   name: 'AdminReservations',
   data() {
     return {
-      reservations: []
+      reservations: [],
+      loading: false
     }
   },
   methods: {
+    ...mapActions(['setAlert']),
+    
+    async loadReservations() {
+      try {
+        this.loading = true
+        const response = await this.$api.admin.getAllReservations()
+        this.reservations = response.data || []
+      } catch (error) {
+        console.error('Error loading reservations:', error)
+        this.setAlert({
+          message: 'Failed to load reservations',
+          type: 'error'
+        })
+      } finally {
+        this.loading = false
+      }
+    },
+    
     formatDateTime(dateTime) {
       return this.$formatDateTime(dateTime)
     },
+    
     getStatusBadgeClass(status) {
       const classes = {
         'active': 'bg-success',
@@ -69,6 +109,10 @@ export default {
       }
       return classes[status] || 'bg-secondary'
     }
+  },
+  
+  async mounted() {
+    await this.loadReservations()
   }
 }
 </script>

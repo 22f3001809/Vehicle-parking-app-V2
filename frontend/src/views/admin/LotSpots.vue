@@ -249,94 +249,27 @@
                         </span>
                       </td>
                     </tr>
+                    <tr v-if="selectedSpot.status === 'O'">
+                      <td><strong>Parking Duration:</strong></td>
+                      <td>
+                        <span class="fw-bold">{{ calculateDuration(selectedSpot.current_reservation.check_in_time) }}</span>
+                        <small class="text-muted d-block">Since check-in</small>
+                      </td>
+                    </tr>
+                    <tr v-if="selectedSpot.status === 'O'">
+                      <td><strong>Estimated Cost:</strong></td>
+                      <td>
+                        <span class="text-success fw-bold">₹{{ calculateEstimatedCost(selectedSpot.current_reservation.check_in_time) }}</span>
+                        <small class="text-muted d-block">Based on {{ formatTime(new Date()) }}</small>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
             </div>
             
             <div v-else class="alert alert-info">
-              <i class="fas fa-info-circle me-2"></i>
               This spot is currently available for booking.
-            </div>
-
-            <!-- Reservation History -->
-            <div class="card">
-              <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">Reservation History</h6>
-                <span v-if="!loadingHistory" class="badge bg-secondary">
-                  {{ spotHistory.length }} records
-                </span>
-              </div>
-              <div class="card-body">
-                <div v-if="loadingHistory" class="text-center py-3">
-                  <div class="spinner-border spinner-border-sm text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                  </div>
-                  <p class="text-muted mt-2 mb-0">Loading history...</p>
-                </div>
-                
-                <div v-else-if="spotHistory.length === 0" class="text-center text-muted py-3">
-                  <i class="fas fa-history fa-2x mb-2"></i>
-                  <p class="mb-0">No reservation history for this spot.</p>
-                </div>
-                
-                <div v-else class="table-responsive">
-                  <table class="table table-sm table-hover mb-0">
-                    <thead class="table-light">
-                      <tr>
-                        <th>User</th>
-                        <th>Vehicle</th>
-                        <th>Booked</th>
-                        <th>Check-in</th>
-                        <th>Check-out</th>
-                        <th>Status</th>
-                        <th>Cost</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="res in spotHistory" :key="res.id">
-                        <td>
-                          <small>
-                            {{ res.user_details ? res.user_details.username : 'N/A' }}
-                          </small>
-                        </td>
-                        <td>
-                          <small>{{ res.vehicle_number || 'N/A' }}</small>
-                        </td>
-                        <td>
-                          <small class="text-muted">
-                            {{ formatDateTime(res.booking_timestamp) }}
-                          </small>
-                        </td>
-                        <td>
-                          <small class="text-muted">
-                            {{ res.check_in_timestamp ? formatDateTime(res.check_in_timestamp) : '-' }}
-                          </small>
-                        </td>
-                        <td>
-                          <small class="text-muted">
-                            {{ res.check_out_timestamp ? formatDateTime(res.check_out_timestamp) : '-' }}
-                          </small>
-                        </td>
-                        <td>
-                          <span class="badge" :class="{
-                            'bg-warning text-dark': res.status === 'pending',
-                            'bg-success': res.status === 'active',
-                            'bg-info': res.status === 'completed',
-                            'bg-danger': res.status === 'cancelled'
-                          }">
-                            {{ res.status }}
-                          </span>
-                        </td>
-                        <td>
-                          <strong v-if="res.parking_cost">₹{{ res.parking_cost }}</strong>
-                          <span v-else class="text-muted">-</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -361,9 +294,7 @@ export default {
       filteredSpots: [],
       selectedSpot: null,
       selectedStatus: '',
-      searchQuery: '',
-      spotHistory: [],
-      loadingHistory: false
+      searchQuery: ''
     }
   },
   
@@ -453,30 +384,10 @@ export default {
 
     async viewSpotDetails(spot) {
       this.selectedSpot = spot
-      this.spotHistory = []
-      await this.loadSpotHistory(spot.id)
-    },
-    
-    async loadSpotHistory(spotId) {
-      try {
-        this.loadingHistory = true
-        const response = await this.$http.get(`/api/admin/spots/${spotId}/history`)
-        this.spotHistory = response.data.history || []
-      } catch (error) {
-        console.error('Error loading spot history:', error)
-        this.setAlert({
-          message: 'Failed to load reservation history',
-          type: 'error'
-        })
-      } finally {
-        this.loadingHistory = false
-      }
     },
     
     closeModal() {
       this.selectedSpot = null
-      this.spotHistory = []
-      this.loadingHistory = false
     },
     
     async refreshSpots() {
@@ -489,6 +400,47 @@ export default {
     
     formatDateTime(dateTime) {
       return this.$formatDateTime(dateTime)
+    },
+    
+    formatTime(date) {
+      if (!date) return 'N/A'
+      try {
+        return new Intl.DateTimeFormat('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        }).format(date)
+      } catch (error) {
+        return 'N/A'
+      }
+    },
+    
+    calculateDuration(checkInTime) {
+      if (!checkInTime) return '0h 0m'
+      
+      const checkIn = new Date(checkInTime)
+      const now = new Date()
+      const durationMs = now - checkIn
+      const hours = Math.floor(durationMs / (1000 * 60 * 60))
+      const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60))
+      
+      if (hours === 0) return `${minutes}m`
+      return `${hours}h ${minutes}m`
+    },
+    
+    calculateEstimatedCost(checkInTime) {
+      if (!checkInTime || !this.parkingLot.price_per_hour) return '0.00'
+      
+      const checkIn = new Date(checkInTime)
+      const now = new Date()
+      const durationMs = now - checkIn
+      const durationHours = durationMs / (1000 * 60 * 60)
+      const chargedHours = Math.max(1.0, durationHours)
+      const cost = chargedHours * this.parkingLot.price_per_hour
+      
+      return cost.toFixed(2)
     }
   },
   

@@ -89,17 +89,17 @@
                 </router-link>
               </li>
               <li class="nav-item">
+                <router-link to="/user/reservations" class="nav-link" @click="closeMobileMenu">
+                  My Reservations
+                </router-link>
+              </li>
+              <li class="nav-item">
                 <router-link to="/parking-lots" class="nav-link" @click="closeMobileMenu">
                   <i class="fas fa-search me-1"></i>
                   Book Parking
                 </router-link>
               </li>
-              <li class="nav-item">
-                <router-link to="/user/reservations" class="nav-link" @click="closeMobileMenu">
-                  <i class="fas fa-calendar me-1"></i>
-                  My Reservations
-                </router-link>
-              </li>
+              
             </template>
           </template>
         </ul>
@@ -107,23 +107,21 @@
         <!-- Right Side Navigation -->
         <ul class="navbar-nav">
           <!-- User Dropdown when authenticated -->
-          <li v-if="isAuthenticated" class="nav-item dropdown">
+          <li v-if="isAuthenticated" class="nav-item dropdown user-dropdown">
             <a 
-              class="nav-link dropdown-toggle" 
+              class="nav-link dropdown-toggle user-menu-toggle" 
               href="#" 
               @click.prevent="toggleDropdown"
               role="button"
             >
-              <i class="fas fa-user-circle me-1"></i>
-              {{ user?.username || user?.full_name || 'User' }}
+              My Account
             </a>
-            <ul class="dropdown-menu" :class="{ show: isDropdownOpen }">
+            <ul class="dropdown-menu dropdown-menu-end user-dropdown-menu" :class="{ show: isDropdownOpen }">
               <li>
                 <router-link 
                   :to="user?.is_admin ? '/admin/profile' : '/profile'" 
                   class="dropdown-item" 
                   @click="closeDropdown">
-                  <i class="fas fa-user-edit me-2"></i>
                   Profile
                 </router-link>
               </li>
@@ -131,8 +129,7 @@
                 <hr class="dropdown-divider">
               </li>
               <li>
-                <button @click="handleLogout" class="dropdown-item text-danger">
-                  <i class="fas fa-sign-out-alt me-2"></i>
+                <button @click="handleLogout" class="dropdown-item logout-item">
                   Logout
                 </button>
               </li>
@@ -320,6 +317,67 @@ export default {
     width: 100%;
     border: none;
     box-shadow: none;
+  }
+}
+
+/* User dropdown styles */
+.user-dropdown {
+  position: relative;
+}
+
+.user-menu-toggle {
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.user-dropdown-menu {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  min-width: 160px;
+  margin-top: 0.5rem !important;
+}
+
+.user-dropdown-menu .dropdown-item {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  color: #202124;
+  transition: all 0.2s ease;
+}
+
+.user-dropdown-menu .dropdown-item:hover {
+  background-color: #f8f9fa;
+  color: #4285f4;
+}
+
+.user-dropdown-menu .logout-item {
+  color: #dc3545;
+}
+
+.user-dropdown-menu .logout-item:hover {
+  background-color: #fff5f5;
+  color: #c82333;
+}
+
+.user-dropdown-menu .dropdown-divider {
+  margin: 0.5rem 0;
+  border-color: #e0e0e0;
+}
+
+@media (max-width: 991px) {
+  .user-dropdown-menu {
+    position: static !important;
+    transform: none !important;
+    width: 100%;
+    border: none;
+    box-shadow: none;
+    margin-top: 0 !important;
+  }
+  
+  .user-menu-toggle {
+    padding: 0.5rem 1rem !important;
   }
 }
 </style>

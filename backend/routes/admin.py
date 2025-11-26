@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from models import db, User, ParkingLot, ParkingSpot, Reservation
 from functools import wraps
+import pytz
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -235,12 +236,14 @@ def get_lot_spots(lot_id):
             ).order_by(Reservation.booking_timestamp.desc()).first()
 
             if reservation:
+                ist = pytz.timezone('Asia/Kolkata')
+                
                 spot_data['current_reservation'] = {
                     'id': reservation.id,
                     'user': reservation.user.username if reservation.user else None,
                     'vehicle_number': reservation.vehicle_number,
-                    'check_in_time': reservation.check_in_timestamp.isoformat() if reservation.check_in_timestamp else None,
-                    'booking_time': reservation.booking_timestamp.isoformat() if reservation.booking_timestamp else None,
+                    'check_in_time': pytz.utc.localize(reservation.check_in_timestamp).astimezone(ist).isoformat() if reservation.check_in_timestamp else None,
+                    'booking_time': pytz.utc.localize(reservation.booking_timestamp).astimezone(ist).isoformat() if reservation.booking_timestamp else None,
                     'status': reservation.status
                 }
         result.append(spot_data)

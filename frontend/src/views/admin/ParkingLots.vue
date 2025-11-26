@@ -67,11 +67,11 @@
               <tr>
                 <th>Name</th>
                 <th>Address</th>
-                <th>Total Spots</th>
-                <th>Available</th>
-                <th>Reserved</th>
-                <th>Occupied</th>
-                <th>Rate/Hour</th>
+                <th class="text-center">Total Spots</th>
+                <th class="text-center">Available</th>
+                <th class="text-center">Reserved</th>
+                <th class="text-center">Occupied</th>
+                <th class="text-center">Rate/Hour</th>
                 <th>Status</th>
                 <th class="text-center">Actions</th>
               </tr>
@@ -82,46 +82,44 @@
                   <strong>{{ lot.name }}</strong>
                 </td>
                 <td>{{ lot.address }}, {{ lot.pin_code }}</td>
-                <td>
-                  <span class="badge text-bg-primary">{{ lot.number_of_spots }}</span>
+                <td class="text-center">
+                  <span class="fs-6 fw-semibold text-primary">{{ lot.number_of_spots }}</span>
                 </td>
-                <td>
-                  <span class="badge text-bg-success">{{ lot.available_spots }}</span>
+                <td class="text-center">
+                  <span class="fs-6 fw-semibold text-success">{{ lot.available_spots }}</span>
                 </td>
-                <td>
-                  <span class="badge text-bg-info">{{ lot.reserved_spots || 0 }}</span>
+                <td class="text-center">
+                  <span class="fs-6 fw-semibold text-info">{{ lot.reserved_spots || 0 }}</span>
                 </td>
-                <td>
-                  <span class="badge text-bg-warning">{{ lot.occupied_spots }}</span>
+                <td class="text-center">
+                  <span class="fs-6 fw-semibold text-warning">{{ lot.occupied_spots }}</span>
                 </td>
-                <td class="text-success fw-bold">₹{{ lot.price_per_hour }}</td>
+                <td class="text-center text-success fw-bold">₹{{ lot.price_per_hour }}</td>
                 <td>
                   <span :class="lot.is_active ? 'badge bg-success' : 'badge bg-danger'">
                     {{ lot.is_active ? 'Active' : 'Inactive' }}
                   </span>
                 </td>
                 <td class="text-center">
-                  <div class="btn-group btn-group-sm" role="group">
-                    <button 
-                      class="btn btn-outline-secondary"
-                      @click="viewLotSpots(lot)"
-                      :title="`View ${lot.name} Spots`">
-                      <i class="fas fa-eye me-1"></i>View
-                    </button>
-                    <button 
-                      class="btn btn-outline-secondary"
-                      @click="editLot(lot)"
-                      :title="`Edit ${lot.name}`">
-                      <i class="fas fa-edit me-1"></i>Edit
-                    </button>
-                    <button 
-                      class="btn btn-outline-secondary"
-                      @click="confirmDeleteLot(lot)"
-                      :disabled="lot.occupied_spots > 0 || lot.reserved_spots > 0"
-                      :title="(lot.occupied_spots > 0 || lot.reserved_spots > 0) ? 'Cannot delete lot with occupied or reserved spots' : `Delete ${lot.name}`">
-                      <i class="fas fa-trash me-1"></i>Delete
-                    </button>
-                  </div>
+                  <button 
+                    class="btn btn-sm btn-light border me-1"
+                    @click="editLot(lot)"
+                    :title="`Edit ${lot.name}`">
+                    Edit
+                  </button>
+                  <button 
+                    class="btn btn-sm btn-light border me-1"
+                    @click="viewLotSpots(lot)"
+                    :title="`View ${lot.name} Spots`">
+                    View
+                  </button>
+                  <button 
+                    class="btn btn-sm btn-danger"
+                    @click="confirmDeleteLot(lot)"
+                    :disabled="lot.occupied_spots > 0 || lot.reserved_spots > 0"
+                    :title="(lot.occupied_spots > 0 || lot.reserved_spots > 0) ? 'Cannot delete lot with occupied or reserved spots' : `Delete ${lot.name}`">
+                    Delete
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -502,58 +500,8 @@ export default {
 </script>
 
 <style scoped>
-/* Lighter badge styles for better number visibility */
-.text-bg-primary {
-  background-color: rgba(13, 110, 253, 0.15) !important;
-  color: #0d6efd !important;
-  border: 1px solid #0d6efd;
-  font-weight: 600;
-  padding: 0.35em 0.65em;
-  display: inline-block;
-  min-width: 2.5rem;
-  text-align: center;
-}
-
-.text-bg-success {
-  background-color: rgba(25, 135, 84, 0.15) !important;
-  color: #198754 !important;
-  border: 1px solid #198754;
-  font-weight: 600;
-  padding: 0.35em 0.65em;
-  display: inline-block;
-  min-width: 2.5rem;
-  text-align: center;
-}
-
-.text-bg-info {
-  background-color: rgba(13, 202, 240, 0.15) !important;
-  color: #0dcaf0 !important;
-  border: 1px solid #0dcaf0;
-  font-weight: 600;
-  padding: 0.35em 0.65em;
-  display: inline-block;
-  min-width: 2.5rem;
-  text-align: center;
-}
-
-.text-bg-warning {
-  background-color: rgba(255, 193, 7, 0.15) !important;
-  color: #ff8c00 !important;
-  border: 1px solid #ffc107;
-  font-weight: 600;
-  padding: 0.35em 0.65em;
-  display: inline-block;
-  min-width: 2.5rem;
-  text-align: center;
-}
-
 /* Table cell alignment */
 .table td {
   vertical-align: middle;
-}
-
-/* Action buttons styling */
-.btn-group-sm > .btn {
-  white-space: nowrap;
 }
 </style>

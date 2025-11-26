@@ -27,6 +27,8 @@ def register():
         full_name=data.get('full_name', data['username']),
         email=data['email'],
         phone_number=data.get('phone_number'),
+        address=data.get('address'),
+        pin_code=data.get('pin_code'),
         is_admin=False
     )
     user.set_password(data['password'])

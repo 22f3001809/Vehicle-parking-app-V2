@@ -1,6 +1,7 @@
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
+import pytz
 
 db = SQLAlchemy()
 
@@ -15,6 +16,8 @@ class User(db.Model):
     email = db.Column(db.String(120), index=True, unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     phone_number = db.Column(db.String(20), nullable=True)
+    address = db.Column(db.String(255), nullable=True)
+    pin_code = db.Column(db.String(10), nullable=True, index=True)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -37,6 +40,8 @@ class User(db.Model):
             'full_name': self.full_name,
             'email': self.email,
             'phone_number': self.phone_number,
+            'address': self.address,
+            'pin_code': self.pin_code,
             'is_admin': self.is_admin,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -195,24 +200,35 @@ class Reservation(db.Model):
         """Return reservation data as dictionary"""
         lot_name = None
         spot_number = None
+        lot_deleted = False
+        spot_deleted = False
+        
         if self.parking_spot:
             spot_number = self.parking_spot.spot_number
             if self.parking_spot.parking_lot:
                 lot_name = self.parking_spot.parking_lot.name
+        else:
+            # If spot is deleted, we can't get the name from relationship
+            spot_deleted = True
+            lot_deleted = True
 
+        ist = pytz.timezone('Asia/Kolkata')
+        
         result = {
             'id': self.id,
             'spot_id': self.spot_id,
             'user_id': self.user_id,
             'vehicle_number': self.vehicle_number,
-            'booking_timestamp': self.booking_timestamp.isoformat() if self.booking_timestamp else None,
-            'check_in_timestamp': self.check_in_timestamp.isoformat() if self.check_in_timestamp else None,
-            'check_out_timestamp': self.check_out_timestamp.isoformat() if self.check_out_timestamp else None,
+            'booking_timestamp': pytz.utc.localize(self.booking_timestamp).astimezone(ist).isoformat() if self.booking_timestamp else None,
+            'check_in_timestamp': pytz.utc.localize(self.check_in_timestamp).astimezone(ist).isoformat() if self.check_in_timestamp else None,
+            'check_out_timestamp': pytz.utc.localize(self.check_out_timestamp).astimezone(ist).isoformat() if self.check_out_timestamp else None,
             'parking_cost': self.parking_cost,
             'status': self.status,
             'duration': self.get_duration_string() if self.check_in_timestamp or self.check_out_timestamp else None,
-            'lot_name': lot_name,
-            'spot_number': spot_number
+            'lot_name': lot_name if lot_name else 'Deleted Parking Lot',
+            'spot_number': spot_number if spot_number else 'N/A',
+            'lot_deleted': lot_deleted,
+            'spot_deleted': spot_deleted
         }
         
         # Include user details if user exists
