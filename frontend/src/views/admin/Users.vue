@@ -118,7 +118,7 @@
 
     <!-- User Details Modal -->
     <div v-if="selectedUser" class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">
@@ -157,7 +157,7 @@
                       <strong>Address:</strong> {{ selectedUser.address || 'N/A' }}
                     </div>
                     <div class="col-md-6 mb-2">
-                      <strong>Status:</strong>
+                      <strong>Status: </strong>
                       <span :class="selectedUser.is_active ? 'badge bg-success' : 'badge bg-danger'">
                         {{ selectedUser.is_active ? 'Active' : 'Inactive' }}
                       </span>
@@ -183,11 +183,12 @@
                     <p class="mb-0">No reservations yet</p>
                   </div>
                   <div v-else class="table-responsive">
-                    <table class="table table-sm">
-                      <thead>
+                    <table class="table table-sm table-hover">
+                      <thead class="table-light">
                         <tr>
                           <th>ID</th>
                           <th>Vehicle</th>
+                          <th>Parking Lot</th>
                           <th>Spot</th>
                           <th>Check-in</th>
                           <th>Check-out</th>
@@ -197,8 +198,9 @@
                       </thead>
                       <tbody>
                         <tr v-for="res in userReservations" :key="res.id">
-                          <td>{{ res.id }}</td>
+                          <td><span class="badge bg-secondary">{{ res.id }}</span></td>
                           <td>{{ res.vehicle_number }}</td>
+                          <td>{{ res.lot_name || 'N/A' }}</td>
                           <td>{{ res.spot_number || 'N/A' }}</td>
                           <td><small>{{ res.check_in_timestamp ? formatDateTime(res.check_in_timestamp) : '-' }}</small></td>
                           <td><small>{{ res.check_out_timestamp ? formatDateTime(res.check_out_timestamp) : '-' }}</small></td>
