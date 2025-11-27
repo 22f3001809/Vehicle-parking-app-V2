@@ -6,7 +6,9 @@ import Home from '@/views/Home.vue'
 import Login from '@/views/auth/Login.vue'
 import Register from '@/views/auth/Register.vue'
 import UserDashboard from '@/views/user/Dashboard.vue'
+import UserSummary from '@/views/user/Summary.vue'
 import AdminDashboard from '@/views/admin/Dashboard.vue'
+import AdminSummary from '@/views/admin/Summary.vue'
 import Profile from '@/views/Profile.vue'
 
 const routes = [
@@ -49,6 +51,18 @@ const routes = [
     name: 'AdminDashboard',
     component: AdminDashboard,
     meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/summary',
+    name: 'AdminSummary',
+    component: AdminSummary,
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/user/summary',
+    name: 'UserSummary',
+    component: UserSummary,
+    meta: { requiresAuth: true, requiresUser: true }
   },
   {
     path: '/admin/parking-lots',

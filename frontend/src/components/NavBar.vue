@@ -75,8 +75,8 @@
                 </div>
               </li>
               <li class="nav-item">
-                <router-link to="/admin/reports" class="nav-link" @click="closeMobileMenu">
-                  Summary
+                <router-link to="/admin/summary" class="nav-link" @click="closeMobileMenu">
+                  Summary Charts
                 </router-link>
               </li>
             </template>
@@ -91,6 +91,11 @@
               <li class="nav-item">
                 <router-link to="/user/reservations" class="nav-link" @click="closeMobileMenu">
                   My Reservations
+                </router-link>
+              </li>
+              <li class="nav-item">
+                <router-link to="/user/summary" class="nav-link" @click="closeMobileMenu">
+                  Summary Charts
                 </router-link>
               </li>
               <li class="nav-item">
