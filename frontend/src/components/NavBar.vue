@@ -98,12 +98,6 @@
                   Summary Charts
                 </router-link>
               </li>
-              <li class="nav-item">
-                <router-link to="/parking-lots" class="nav-link" @click="closeMobileMenu">
-                  <i class="fas fa-search me-1"></i>
-                  Book Parking
-                </router-link>
-              </li>
               
             </template>
           </template>

@@ -81,8 +81,8 @@
             <div class="card-header bg-primary text-white">
               <h5 class="mb-0">Daily Revenue (Last 7 Days)</h5>
             </div>
-            <div class="card-body d-flex justify-content-center align-items-center">
-              <canvas id="dailyRevenueChart" style="max-height: 250px;"></canvas>
+            <div class="card-body" style="height: 300px; position: relative;">
+              <canvas id="dailyRevenueChart"></canvas>
             </div>
           </div>
         </div>
@@ -93,8 +93,8 @@
             <div class="card-header bg-primary text-white">
               <h5 class="mb-0">Daily Bookings (Last 7 Days)</h5>
             </div>
-            <div class="card-body d-flex justify-content-center align-items-center">
-              <canvas id="dailyBookingsChart" style="max-height: 250px;"></canvas>
+            <div class="card-body" style="height: 300px; position: relative;">
+              <canvas id="dailyBookingsChart"></canvas>
             </div>
           </div>
         </div>
@@ -105,8 +105,8 @@
             <div class="card-header bg-primary text-white">
               <h5 class="mb-0">Parking Spot Status</h5>
             </div>
-            <div class="card-body d-flex justify-content-center align-items-center">
-              <canvas id="spotStatusChart" style="max-height: 250px;"></canvas>
+            <div class="card-body" style="height: 300px; position: relative;">
+              <canvas id="spotStatusChart"></canvas>
             </div>
           </div>
         </div>
@@ -117,8 +117,8 @@
             <div class="card-header bg-primary text-white">
               <h5 class="mb-0">Reservation Status Breakdown</h5>
             </div>
-            <div class="card-body d-flex justify-content-center align-items-center">
-              <canvas id="reservationStatusChart" style="max-height: 250px;"></canvas>
+            <div class="card-body" style="height: 300px; position: relative;">
+              <canvas id="reservationStatusChart"></canvas>
             </div>
           </div>
         </div>
@@ -172,10 +172,25 @@ export default {
 
         this.recentLots = data.recent_lots || []
 
-        // Initialize charts after data is loaded
-        this.$nextTick(() => {
-          this.initCharts(data)
-        })
+        // Fetch daily summary data for charts
+        try {
+          const summaryRes = await this.$api.admin.getDailySummary()
+          const summaryData = summaryRes.data
+          console.log('Daily summary data received:', summaryData)
+          
+          // Initialize charts with real data - wait a bit for DOM to be ready
+          this.$nextTick(async () => {
+            await new Promise(resolve => setTimeout(resolve, 100))
+            this.initCharts(summaryData)
+          })
+        } catch (error) {
+          console.error('Error loading daily summary:', error)
+          // Initialize charts with empty data
+          this.$nextTick(async () => {
+            await new Promise(resolve => setTimeout(resolve, 100))
+            this.initCharts({ daily_data: [], reservation_status: {} })
+          })
+        }
       } catch (error) {
         console.error('Error loading stats:', error)
         this.setAlert({
@@ -187,166 +202,150 @@ export default {
       }
     },
 
-    initCharts(data) {
+    initCharts(summaryData) {
+      console.log('initCharts called with data:', summaryData)
+      
       // Destroy existing charts
       Object.values(this.charts).forEach(chart => {
         if (chart) chart.destroy()
       })
       this.charts = {}
 
-      // Helper function for no data display
-      const handleNoData = (chartId) => {
-        const ctx = document.getElementById(chartId)
-        if (ctx) {
-          const parentDiv = ctx.parentElement
-          ctx.remove()
-          parentDiv.innerHTML = `<div class="alert alert-info text-center mt-3" role="alert">No data available to display this chart yet.</div>`
-          parentDiv.style.display = 'flex'
-          parentDiv.style.flexDirection = 'column'
-          parentDiv.style.justifyContent = 'center'
-          parentDiv.style.alignItems = 'center'
-        }
-      }
-
-      // Calculate daily revenue and bookings for last 7 days
-      const last7Days = this.getLast7Days()
-      const dailyRevenueAmounts = new Array(7).fill(0)
-      const dailyBookingsCounts = new Array(7).fill(0)
-
-      // Aggregate reservation data
-      if (this.recentLots && this.recentLots.length > 0) {
-        // For demo: simulate data based on occupied spots
-        this.recentLots.forEach((lot, idx) => {
-          const revenue = (lot.occupied_spots || 0) * (lot.price_per_hour || 0) * 24
-          dailyRevenueAmounts[idx % 7] += revenue
-          dailyBookingsCounts[idx % 7] += (lot.occupied_spots || 0)
-        })
-      }
+      // Extract daily data from real backend response
+      const dailyData = summaryData.daily_data || []
+      const last7Days = dailyData.length > 0 ? dailyData.map(d => d.date) : this.getLast7Days()
+      
+      let dailyRevenueAmounts = dailyData.map(d => d.revenue || 0)
+      let dailyBookingsCounts = dailyData.map(d => d.bookings || 0)
+      
+      console.log('Chart data prepared:', { last7Days, dailyRevenueAmounts, dailyBookingsCounts })
 
       // 1. Daily Revenue Chart (Line - Last 7 Days)
       const dailyRevenueCtx = document.getElementById('dailyRevenueChart')
+      console.log('dailyRevenueCtx element:', dailyRevenueCtx)
       if (dailyRevenueCtx) {
-        const hasData = dailyRevenueAmounts.some(val => val > 0)
-        if (hasData) {
+        try {
           this.charts.dailyRevenue = new Chart(dailyRevenueCtx, {
-            type: 'line',
-            data: {
-              labels: last7Days,
-              datasets: [{
-                label: 'Revenue (₹)',
-                data: dailyRevenueAmounts,
-                borderColor: 'hsl(280, 70%, 55%)',
-                backgroundColor: 'hsla(280, 70%, 55%, 0.2)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.3
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: true, position: 'top', labels: { color: 'var(--bs-dark)' } },
-                tooltip: {
-                  callbacks: {
-                    label: function(context) {
-                      return context.dataset.label + ': ₹' + context.parsed.y.toFixed(2)
-                    }
+          type: 'line',
+          data: {
+            labels: last7Days,
+            datasets: [{
+              label: 'Revenue (₹)',
+              data: dailyRevenueAmounts,
+              borderColor: 'hsl(280, 70%, 55%)',
+              backgroundColor: 'hsla(280, 70%, 55%, 0.2)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'top', labels: { color: 'var(--bs-dark)' } },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return context.dataset.label + ': ₹' + context.parsed.y.toFixed(2)
                   }
                 }
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  ticks: {
-                    callback: function(value) {
-                      if (Number.isInteger(value)) {
-                        return '₹' + value
-                      } else {
-                        return '₹' + value.toFixed(2)
-                      }
-                    },
-                    color: 'var(--bs-dark)'
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    if (Number.isInteger(value)) {
+                      return '₹' + value
+                    } else {
+                      return '₹' + value.toFixed(2)
+                    }
                   },
-                  title: { display: true, text: 'Revenue (₹)', color: 'var(--bs-dark)' },
-                  grid: { color: 'rgba(0,0,0,0.1)' }
+                  color: 'var(--bs-dark)'
                 },
-                x: {
-                  ticks: { color: 'var(--bs-dark)' },
-                  title: { display: true, text: 'Date', color: 'var(--bs-dark)' },
-                  grid: { color: 'rgba(0,0,0,0.1)' }
-                }
+                title: { display: true, text: 'Revenue (₹)', color: 'var(--bs-dark)' },
+                grid: { color: 'rgba(0,0,0,0.1)' }
+              },
+              x: {
+                ticks: { color: 'var(--bs-dark)' },
+                title: { display: true, text: 'Date', color: 'var(--bs-dark)' },
+                grid: { color: 'rgba(0,0,0,0.1)' }
               }
             }
-          })
-        } else {
-          handleNoData('dailyRevenueChart')
-        }
+          }
+        })
+        console.log('Daily Revenue chart created')
+      } catch (err) {
+        console.error('Error creating Daily Revenue chart:', err)
+      }
       }
 
       // 2. Daily Bookings Chart (Line - Last 7 Days)
       const dailyBookingsCtx = document.getElementById('dailyBookingsChart')
       if (dailyBookingsCtx) {
-        const hasData = dailyBookingsCounts.some(val => val > 0)
-        if (hasData) {
+        try {
           this.charts.dailyBookings = new Chart(dailyBookingsCtx, {
-            type: 'line',
-            data: {
-              labels: last7Days,
-              datasets: [{
-                label: 'Bookings',
-                data: dailyBookingsCounts,
-                backgroundColor: 'hsla(210, 70%, 45%, 0.2)',
-                borderColor: 'hsl(210, 70%, 45%)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.3
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: true, position: 'top', labels: { color: 'var(--bs-dark)' } },
-                tooltip: {
-                  callbacks: {
-                    label: function(context) {
-                      return context.dataset.label + ': ' + context.parsed.y
-                    }
+          type: 'line',
+          data: {
+            labels: last7Days,
+            datasets: [{
+              label: 'Bookings',
+              data: dailyBookingsCounts,
+              backgroundColor: 'hsla(210, 70%, 45%, 0.2)',
+              borderColor: 'hsl(210, 70%, 45%)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'top', labels: { color: 'var(--bs-dark)' } },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return context.dataset.label + ': ' + context.parsed.y
                   }
                 }
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  ticks: {
-                    callback: function(value) {
-                      if (Number.isInteger(value)) return value
-                    },
-                    color: 'var(--bs-dark)'
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    if (Number.isInteger(value)) return value
                   },
-                  title: { display: true, text: 'Number of Bookings', color: 'var(--bs-dark)' },
-                  grid: { color: 'rgba(0,0,0,0.1)' }
+                  color: 'var(--bs-dark)'
                 },
-                x: {
-                  ticks: { color: 'var(--bs-dark)' },
-                  title: { display: true, text: 'Date', color: 'var(--bs-dark)' },
-                  grid: { color: 'rgba(0,0,0,0.1)' }
-                }
+                title: { display: true, text: 'Number of Bookings', color: 'var(--bs-dark)' },
+                grid: { color: 'rgba(0,0,0,0.1)' }
+              },
+              x: {
+                ticks: { color: 'var(--bs-dark)' },
+                title: { display: true, text: 'Date', color: 'var(--bs-dark)' },
+                grid: { color: 'rgba(0,0,0,0.1)' }
               }
             }
-          })
-        } else {
-          handleNoData('dailyBookingsChart')
-        }
+          }
+        })
+        console.log('Daily Bookings chart created')
+      } catch (err) {
+        console.error('Error creating Daily Bookings chart:', err)
+      }
       }
 
       // 3. Parking Spot Status (Doughnut)
       const spotStatusCtx = document.getElementById('spotStatusChart')
       if (spotStatusCtx) {
-        const hasData = this.stats.availableSpots > 0 || this.stats.occupiedSpots > 0 || this.stats.reservedSpots > 0
-        if (hasData) {
-          this.charts.spotStatus = new Chart(spotStatusCtx, {
+        try {
+          const hasData = this.stats.availableSpots > 0 || this.stats.occupiedSpots > 0 || this.stats.reservedSpots > 0
+          if (hasData) {
+            this.charts.spotStatus = new Chart(spotStatusCtx, {
             type: 'doughnut',
             data: {
               labels: ['Available', 'Occupied', 'Reserved'],
@@ -380,21 +379,30 @@ export default {
               cutout: '70%'
             }
           })
-        } else {
-          handleNoData('spotStatusChart')
+          }
+        } catch (err) {
+          console.error('Error creating Parking Spot Status chart:', err)
         }
       }
 
-      // 4. Reservation Status Breakdown (Bar)
+      // 4. Reservation Status Breakdown (Bar) - using real data from backend
       const reservationStatusCtx = document.getElementById('reservationStatusChart')
+      console.log('reservationStatusCtx element:', reservationStatusCtx)
       if (reservationStatusCtx) {
+        try {
+          const reservationStatus = summaryData.reservation_status || {}
+          const pendingCount = reservationStatus.pending || 0
+        const activeCount = reservationStatus.active || 0
+        const completedCount = reservationStatus.completed || 0
+        const cancelledCount = reservationStatus.cancelled || 0
+        
         this.charts.reservationStatus = new Chart(reservationStatusCtx, {
           type: 'bar',
           data: {
             labels: ['Pending', 'Active', 'Completed', 'Cancelled'],
             datasets: [{
               label: 'Number of Reservations',
-              data: [0, 0, 0, 0],
+              data: [pendingCount, activeCount, completedCount, cancelledCount],
               backgroundColor: [
                 'hsl(200, 70%, 45%)',   // Blue - Pending
                 'hsl(140, 60%, 40%)',   // Green - Active
@@ -441,7 +449,13 @@ export default {
             }
           }
         })
+        console.log('Reservation Status chart created')
+      } catch (err) {
+        console.error('Error creating Reservation Status chart:', err)
       }
+      }
+      
+      console.log('All charts initialized:', Object.keys(this.charts))
     },
 
     getLast7Days() {

@@ -52,7 +52,6 @@
         </div>
         
         <div v-else-if="parkingLots.length === 0" class="text-center text-muted py-5">
-          <i class="fas fa-parking fa-4x mb-3"></i>
           <h4>No Parking Lots Found</h4>
           <p>Create your first parking lot to get started.</p>
           <button class="btn btn-primary" @click="showCreateModal = true">
@@ -237,20 +236,6 @@
                 </div>
               </div>
               
-              <div class="row">
-                <div class="col-12 mb-3">
-                  <div class="form-check">
-                    <input 
-                      class="form-check-input" 
-                      type="checkbox" 
-                      id="isActive" 
-                      v-model="lotForm.is_active">
-                    <label class="form-check-label" for="isActive">
-                      Active (users can book spots in this lot)
-                    </label>
-                  </div>
-                </div>
-              </div>
             </form>
           </div>
           <div class="modal-footer">

@@ -56,9 +56,6 @@ def login():
     if not user or not user.check_password(data['password']):
         return jsonify({'error': 'Invalid username or password'}), 401
     
-    if not user.is_active:
-        return jsonify({'error': 'Account is inactive'}), 403
-    
     # Update last login
     from datetime import datetime
     user.last_login = datetime.utcnow()

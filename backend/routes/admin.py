@@ -3,6 +3,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from models import db, User, ParkingLot, ParkingSpot, Reservation
 from functools import wraps
 import pytz
+from datetime import datetime, timedelta
+from sqlalchemy import func
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -59,6 +61,64 @@ def dashboard():
         'total_revenue': round(total_revenue, 2),
         'recent_lots': [lot.to_dict() for lot in recent_lots],
         'recent_users': [user.to_dict() for user in recent_users]
+    }), 200
+
+
+@admin_bp.route('/dashboard/daily-summary', methods=['GET'])
+@admin_required()
+def daily_summary():
+    """Get daily revenue and bookings for last 7 days with reservation status breakdown"""
+    ist = pytz.timezone('Asia/Kolkata')
+    
+    # Calculate date range for last 7 days
+    today = datetime.now(ist).replace(hour=0, minute=0, second=0, microsecond=0)
+    seven_days_ago = today - timedelta(days=6)
+    
+    daily_data = []
+    
+    # Get data for each day
+    for i in range(7):
+        day_date = seven_days_ago + timedelta(days=i)
+        day_start = day_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        
+        # Convert to UTC for database query
+        day_start_utc = day_start.astimezone(pytz.utc).replace(tzinfo=None)
+        day_end_utc = day_end.astimezone(pytz.utc).replace(tzinfo=None)
+        
+        # Get completed reservations for this day
+        completed_reservations = Reservation.query.filter(
+            Reservation.status == 'completed',
+            Reservation.check_out_timestamp >= day_start_utc,
+            Reservation.check_out_timestamp <= day_end_utc
+        ).all()
+        
+        # Calculate daily revenue
+        daily_revenue = sum(res.parking_cost or 0 for res in completed_reservations)
+        
+        # Count bookings (completed check-outs for this day)
+        daily_bookings = len(completed_reservations)
+        
+        daily_data.append({
+            'date': day_date.strftime('%b %d'),
+            'revenue': round(daily_revenue, 2),
+            'bookings': daily_bookings
+        })
+    
+    # Get reservation status breakdown
+    pending_count = Reservation.query.filter_by(status='pending').count()
+    active_count = Reservation.query.filter_by(status='active').count()
+    completed_count = Reservation.query.filter_by(status='completed').count()
+    cancelled_count = Reservation.query.filter_by(status='cancelled').count()
+    
+    return jsonify({
+        'daily_data': daily_data,
+        'reservation_status': {
+            'pending': pending_count,
+            'active': active_count,
+            'completed': completed_count,
+            'cancelled': cancelled_count
+        }
     }), 200
 
 

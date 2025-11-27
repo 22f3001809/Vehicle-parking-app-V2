@@ -14,16 +14,16 @@
         <div class="row">
           <div class="col-md-6">
             <p><strong>Reservation ID:</strong> {{ activeReservation.id }}</p>
-            <p><strong>Parking Lot:</strong> {{ activeReservation.parkingLot?.name || activeReservation.parking_lot?.name || 'N/A' }}</p>
-            <p><strong>Spot Number:</strong> {{ activeReservation.spot?.number || activeReservation.spot?.spot_number || 'N/A' }}</p>
+            <p><strong>Parking Lot:</strong> {{ activeReservation.lot_name || 'N/A' }}</p>
+            <p><strong>Spot Number:</strong> {{ activeReservation.spot_number || 'N/A' }}</p>
             <p><strong>Vehicle Number:</strong> {{ activeReservation.vehicle_number }}</p>
           </div>
           <div class="col-md-6">
             <p><strong>Booked At:</strong> {{ formatDateTime(activeReservation.booking_timestamp) }}</p>
             <p v-if="activeReservation.check_in_timestamp"><strong>Check-in Time:</strong> {{ formatDateTime(activeReservation.check_in_timestamp) }}</p>
-            <p><strong>Status:</strong> 
+            <p><strong>Status: </strong> 
               <span :class="getStatusBadgeClass(activeReservation.status)" class="badge">
-                {{ activeReservation.status | capitalize }}
+                {{ activeReservation.status }}
               </span>
             </p>
           </div>
@@ -124,28 +124,30 @@
           >
           <button class="btn btn-outline-primary" type="submit">Search</button>
         </form>
-        <div v-if="searchResults.length > 0" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
-          <div v-for="lot in searchResults" :key="lot.id" class="col">
-            <div class="card h-100 shadow-sm">
-              <div class="card-body d-flex flex-column">
-                <h5 class="card-title">{{ lot.name }}</h5>
-                <p class="card-text text-muted">{{ lot.address }}</p>
-                <p class="card-text">Price: ₹{{ lot.price_per_hour }} / hour</p>
-                <p class="card-text">
-                  Available Spots: 
-                  <span class="badge bg-success">{{ lot.available_spots }} / {{ lot.number_of_spots }}</span>
-                </p>
-                <div class="mt-auto">
-                  <router-link 
-                    v-if="lot.available_spots > 0" 
-                    :to="`/user/book-parking/${lot.id}`" 
-                    class="btn btn-primary btn-sm"
-                  >
-                    Book Spot
-                  </router-link>
-                  <button v-else class="btn btn-secondary btn-sm" disabled>
-                    No Spots Available
-                  </button>
+        <div v-if="searchResults.length > 0" class="parking-lots-scroll">
+          <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+            <div v-for="lot in searchResults" :key="lot.id" class="col">
+              <div class="card h-100 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                  <h5 class="card-title">{{ lot.name }}</h5>
+                  <p class="card-text text-muted">{{ lot.address }}</p>
+                  <p class="card-text">Price: ₹{{ lot.price_per_hour }} / hour</p>
+                  <p class="card-text">
+                    Available Spots: 
+                    <span class="badge bg-success">{{ lot.available_spots }} / {{ lot.number_of_spots }}</span>
+                  </p>
+                  <div class="mt-auto">
+                    <router-link 
+                      v-if="lot.available_spots > 0" 
+                      :to="`/user/book-parking/${lot.id}`" 
+                      class="btn btn-primary btn-sm"
+                    >
+                      Book Spot
+                    </router-link>
+                    <button v-else class="btn btn-secondary btn-sm" disabled>
+                      No Spots Available
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -212,7 +214,7 @@
                 </td>
                 <td>
                   <span :class="getStatusBadgeClass(reservation.status)" class="badge">
-                    {{ reservation.status | capitalize }}
+                    {{ reservation.status }}
                   </span>
                 </td>
                 <td>
@@ -241,7 +243,7 @@
                   <button 
                     v-if="reservation.status === 'active'" 
                     @click="checkOut(reservation.id)"
-                    class="btn btn-sm btn-primary"
+                    class="btn btn-sm btn-primary btn-sm px-1 me-1"
                     :disabled="processing"
                   >
                     Check Out
@@ -510,5 +512,32 @@ export default {
 
 .opacity-75 {
   opacity: 0.75;
+}
+
+.parking-lots-scroll {
+  max-height: 600px;
+  overflow-y: auto;
+  border: 1px solid #e3e6f0;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  background-color: #fafbfc;
+}
+
+.parking-lots-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.parking-lots-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.parking-lots-scroll::-webkit-scrollbar-thumb {
+  background: #0d6efd;
+  border-radius: 10px;
+}
+
+.parking-lots-scroll::-webkit-scrollbar-thumb:hover {
+  background: #0b5ed7;
 }
 </style>

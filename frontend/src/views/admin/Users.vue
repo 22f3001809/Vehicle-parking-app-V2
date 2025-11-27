@@ -4,7 +4,7 @@
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-2 pb-2 border-bottom">
       <div>
         <h1 class="h2 text-primary">User Management</h1>
-        <p class="text-muted">Manage system users and their permissions</p>
+        <p class="text-muted">View System user details</p>
       </div>
     </div>
 
@@ -60,7 +60,6 @@
                 <th>Email</th>
                 <th>Pin Code</th>
                 <th>Role</th>
-                <th>Status</th>
                 <th>Last Login</th>
                 <th>Registered</th>
                 <th>Reservations</th>
@@ -84,11 +83,6 @@
                 <td>
                   <span :class="user.is_admin ? 'badge bg-danger' : 'badge bg-primary'">
                     {{ user.is_admin ? 'Admin' : 'User' }}
-                  </span>
-                </td>
-                <td>
-                  <span :class="user.is_active ? 'badge bg-success' : 'badge bg-danger'">
-                    {{ user.is_active ? 'Active' : 'Inactive' }}
                   </span>
                 </td>
                 <td>
@@ -155,12 +149,6 @@
                     </div>
                     <div class="col-md-12 mb-2">
                       <strong>Address:</strong> {{ selectedUser.address || 'N/A' }}
-                    </div>
-                    <div class="col-md-6 mb-2">
-                      <strong>Status: </strong>
-                      <span :class="selectedUser.is_active ? 'badge bg-success' : 'badge bg-danger'">
-                        {{ selectedUser.is_active ? 'Active' : 'Inactive' }}
-                      </span>
                     </div>
                     <div class="col-md-6 mb-2">
                       <strong>Joined:</strong> {{ formatDate(selectedUser.created_at) }}

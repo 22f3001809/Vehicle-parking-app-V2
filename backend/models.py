@@ -43,7 +43,6 @@ class User(db.Model):
             'address': self.address,
             'pin_code': self.pin_code,
             'is_admin': self.is_admin,
-            'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None
         }

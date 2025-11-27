@@ -98,6 +98,7 @@ export const api = {
   // Admin endpoints
   admin: {
     getDashboard: () => apiClient.get('/admin/dashboard'),
+    getDailySummary: () => apiClient.get('/admin/dashboard/daily-summary'),
     getParkingLots: () => apiClient.get('/admin/parking-lots'),
     createParkingLot: (data) => apiClient.post('/admin/parking-lots', data),
     updateParkingLot: (lotId, data) => apiClient.put(`/admin/parking-lots/${lotId}`, data),
