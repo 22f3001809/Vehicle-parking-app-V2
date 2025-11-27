@@ -1,6 +1,14 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from models import db, User, ParkingLot, ParkingSpot, Reservation
+from cache_config import cache
+from utils.cache_utils import (
+    CACHE_TIMEOUT_ADMIN_DASH,
+    CACHE_TIMEOUT_LOTS,
+    invalidate_lot_cache,
+    invalidate_all_lots_cache,
+    invalidate_admin_dashboard_cache
+)
 from functools import wraps
 import pytz
 from datetime import datetime, timedelta
@@ -25,6 +33,7 @@ def admin_required():
 
 @admin_bp.route('/dashboard', methods=['GET'])
 @admin_required()
+@cache.cached(timeout=CACHE_TIMEOUT_ADMIN_DASH)
 def dashboard():
     """Admin dashboard - summary statistics"""
     total_lots = ParkingLot.query.count()
@@ -66,6 +75,7 @@ def dashboard():
 
 @admin_bp.route('/dashboard/daily-summary', methods=['GET'])
 @admin_required()
+@cache.cached(timeout=CACHE_TIMEOUT_ADMIN_DASH)
 def daily_summary():
     """Get daily revenue and bookings for last 7 days with reservation status breakdown"""
     ist = pytz.timezone('Asia/Kolkata')
@@ -124,6 +134,7 @@ def daily_summary():
 
 @admin_bp.route('/parking-lots', methods=['GET'])
 @admin_required()
+@cache.cached(timeout=CACHE_TIMEOUT_LOTS)
 def get_all_parking_lots():
     """Get all parking lots with details"""
     lots = ParkingLot.query.all()
@@ -169,6 +180,10 @@ def create_parking_lot():
         db.session.add(spot)
     
     db.session.commit()
+    
+    # Invalidate cache after creating lot
+    invalidate_all_lots_cache()
+    invalidate_admin_dashboard_cache()
     
     return jsonify({
         'message': f'Parking lot created with {data["number_of_spots"]} spots',
@@ -241,6 +256,10 @@ def update_parking_lot(lot_id):
     
     db.session.commit()
     
+    # Invalidate cache after updating lot
+    invalidate_lot_cache(lot_id)
+    invalidate_admin_dashboard_cache()
+    
     return jsonify({
         'message': 'Parking lot updated successfully',
         'parking_lot': lot.to_dict()
@@ -273,6 +292,11 @@ def delete_parking_lot(lot_id):
     
     db.session.delete(lot)
     db.session.commit()
+    
+    # Invalidate cache after deleting lot
+    invalidate_lot_cache(lot_id)
+    invalidate_all_lots_cache()
+    invalidate_admin_dashboard_cache()
     
     return jsonify({'message': 'Parking lot deleted successfully'}), 200
 

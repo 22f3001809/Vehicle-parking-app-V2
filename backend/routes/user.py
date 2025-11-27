@@ -1,6 +1,14 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from models import db, User, ParkingLot, ParkingSpot, Reservation
+from cache_config import cache
+from utils.cache_utils import (
+    CACHE_TIMEOUT_LOTS, 
+    CACHE_TIMEOUT_SPOTS,
+    CACHE_TIMEOUT_DASHBOARD,
+    invalidate_lot_cache,
+    invalidate_user_cache
+)
 from datetime import datetime
 from functools import wraps
 import pytz
@@ -24,6 +32,7 @@ def user_required():
 
 @user_bp.route('/dashboard', methods=['GET'])
 @jwt_required()
+@cache.cached(timeout=CACHE_TIMEOUT_DASHBOARD, key_prefix=lambda: f"user_dashboard_{get_jwt_identity()}")
 def dashboard():
     """User dashboard - personal statistics"""
     current_user_id = get_jwt_identity()
@@ -62,6 +71,7 @@ def dashboard():
 
 @user_bp.route('/parking-lots', methods=['GET'])
 @jwt_required()
+@cache.cached(timeout=CACHE_TIMEOUT_LOTS)
 def get_parking_lots():
     """Get all available parking lots"""
     search = request.args.get('search', '')
@@ -86,13 +96,16 @@ def get_parking_lots():
 
 @user_bp.route('/parking-lots/<int:lot_id>', methods=['GET'])
 @jwt_required()
+@cache.cached(timeout=CACHE_TIMEOUT_LOTS)
 def get_parking_lot_details(lot_id):
     """Get specific parking lot details"""
+    current_user_id = get_jwt_identity()
     lot = ParkingLot.query.get_or_404(lot_id)
     
     if not lot.is_active:
         return jsonify({'error': 'This parking lot is not available'}), 404
     
+    invalidate_user_cache(current_user_id)
     return jsonify(lot.to_dict()), 200
 
 
@@ -148,6 +161,9 @@ def book_parking_spot(lot_id):
     # Refresh to get updated relationships
     db.session.refresh(reservation)
     
+    # Invalidate user cache after booking
+    invalidate_user_cache(current_user_id)
+    
     return jsonify({
         'message': f'Spot {spot.spot_number} reserved successfully',
         'reservation': reservation.to_dict(),
@@ -184,6 +200,9 @@ def checkin_reservation(reservation_id):
     
     db.session.commit()
     
+    # Invalidate user cache after check-in
+    invalidate_user_cache(current_user_id)
+    
     return jsonify({
         'message': 'Checked in successfully. Vehicle parked.',
         'reservation': reservation.to_dict()
@@ -219,6 +238,9 @@ def release_spot(reservation_id):
     reservation.parking_spot.status = 'A'  # Available
     
     db.session.commit()
+    
+    # Invalidate user cache after checkout
+    invalidate_user_cache(current_user_id)
     
     return jsonify({
         'message': 'Spot released successfully',

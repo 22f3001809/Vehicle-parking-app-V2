@@ -343,7 +343,6 @@ export default {
   color: #212529;
 }
 
-/* Badge styling - minimal and clean */
 .badge {
   font-weight: 500;
   padding: 0.35em 0.65em;
@@ -375,7 +374,6 @@ small.text-muted {
   font-size: 0.875rem;
 }
 
-/* Modal improvements */
 .modal-content {
   border: none;
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);

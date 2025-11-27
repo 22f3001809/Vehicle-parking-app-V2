@@ -10,6 +10,7 @@ load_dotenv()
 from models import db
 from config import config
 from utils.admin_setup import create_admin_user
+from cache_config import init_cache
 
 
 def create_app(config_name='default'):
@@ -21,6 +22,7 @@ def create_app(config_name='default'):
     CORS(app) 
     jwt = JWTManager(app)
     migrate = Migrate(app, db)
+    init_cache(app)
     
     # Register Bps
     from routes.auth import auth_bp
