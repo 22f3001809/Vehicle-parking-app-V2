@@ -1,7 +1,9 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_mail import Mail
 from flask_migrate import Migrate
+from celery_app import celery_app
 from dotenv import load_dotenv
 import os
 
@@ -12,6 +14,7 @@ from config import config
 from utils.admin_setup import create_admin_user
 from cache_config import init_cache
 
+mail = Mail()
 
 def create_app(config_name='default'):
     app = Flask(__name__)
@@ -23,6 +26,7 @@ def create_app(config_name='default'):
     jwt = JWTManager(app)
     migrate = Migrate(app, db)
     init_cache(app)
+    mail.init_app(app)
     
     # Register Bps
     from routes.auth import auth_bp
@@ -58,6 +62,17 @@ def create_app(config_name='default'):
     def internal_error(error):
         db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
+    
+    @app.route('/daily_reminder', methods=['GET'])
+    # This is only for testing. To be run automatically
+    def test_daily_rem():
+        task = celery_app.send_task('tasks.daily_reminders')
+        return jsonify({'status': 'Started', 'job_id': task.id})
+
+    @app.route('/monthly_report', methods=['GET'])
+    def test_monthly_report():
+        task = celery_app.send_task('tasks.monthly_report')
+        return jsonify({'status': 'Started', 'job_id': task.id})
     
     return app
 

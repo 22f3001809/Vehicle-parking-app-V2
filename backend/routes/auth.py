@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from models import db, User
+from celery_app import celery_app 
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
-
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -33,13 +33,23 @@ def register():
     )
     user.set_password(data['password'])
     
-    db.session.add(user)
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'User registered successfully',
-        'user': user.to_dict()
-    }), 201
+    try:
+        db.session.add(user)
+        db.session.commit()
+        
+        celery_app.send_task('tasks.notify_new_user', args=[user.id])
+        
+        print(f"[AUTH] Queued GChat notification for user {user.id}")
+
+        return jsonify({
+            'message': 'User registered successfully',
+            'user': user.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[AUTH] Registration failed: {e}")
+        return jsonify({'error': 'Registration failed', 'details': str(e)}), 500
 
 
 @auth_bp.route('/login', methods=['POST'])
@@ -61,12 +71,11 @@ def login():
     user.last_login = datetime.utcnow()
     db.session.commit()
     
-    # Create JWT token with user role info
+    # Create JWT token
     additional_claims = {
         'is_admin': user.is_admin,
         'username': user.username
     }
-    # Use string identity to avoid 'Subject must be a string' (PyJWT) on decode
     access_token = create_access_token(identity=str(user.id), additional_claims=additional_claims)
     
     return jsonify({
@@ -85,10 +94,10 @@ def get_current_user():
         user_id = int(current_user_id)
     except (TypeError, ValueError):
         return jsonify({'error': 'Invalid token identity'}), 401
+        
     user = User.query.get(user_id)
     
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    # Keep response shape consistent with front-end expectations
     return jsonify({'user': user.to_dict()}), 200

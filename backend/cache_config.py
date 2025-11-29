@@ -1,6 +1,3 @@
-"""Redis cache configuration and utility functions
-"""
-
 from flask_caching import Cache
 import redis
 import os

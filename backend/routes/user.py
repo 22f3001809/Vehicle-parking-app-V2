@@ -12,12 +12,12 @@ from utils.cache_utils import (
 from datetime import datetime
 from functools import wraps
 import pytz
+from celery_app import celery_app
 
 user_bp = Blueprint('user', __name__, url_prefix='/api/user')
 
 
 def user_required():
-    """Decorator to ensure only regular users (not admins) access user routes"""
     def wrapper(fn):
         @wraps(fn)
         @jwt_required()
@@ -71,14 +71,13 @@ def dashboard():
 
 @user_bp.route('/parking-lots', methods=['GET'])
 @jwt_required()
-@cache.cached(timeout=CACHE_TIMEOUT_LOTS)
+@cache.cached(timeout=CACHE_TIMEOUT_LOTS, query_string=True)
 def get_parking_lots():
     """Get all available parking lots"""
     search = request.args.get('search', '')
     
     query = ParkingLot.query.filter_by(is_active=True)
     
-    # Search by name, address, or pin_code
     if search:
         search_pattern = f"%{search}%"
         query = query.filter(
@@ -99,15 +98,12 @@ def get_parking_lots():
 @cache.cached(timeout=CACHE_TIMEOUT_LOTS)
 def get_parking_lot_details(lot_id):
     """Get specific parking lot details"""
-    current_user_id = get_jwt_identity()
     lot = ParkingLot.query.get_or_404(lot_id)
     
     if not lot.is_active:
         return jsonify({'error': 'This parking lot is not available'}), 404
     
-    invalidate_user_cache(current_user_id)
     return jsonify(lot.to_dict()), 200
-
 
 @user_bp.route('/parking-lots/<int:lot_id>/book', methods=['POST'])
 @jwt_required()
@@ -135,7 +131,7 @@ def book_parking_spot(lot_id):
     if vehicle_reservation:
         return jsonify({'error': f'This vehicle ({vehicle_number}) already has an active reservation'}), 400
     
-    # Find first available spot in the lot (automatic allocation)
+    # Find first available spot in the lot 
     spot = ParkingSpot.query.filter_by(
         lot_id=lot_id,
         status='A'
@@ -456,3 +452,85 @@ def get_checkout_details(reservation_id):
         'duration': duration_str,
         'cost': round(cost, 2)
     }), 200
+
+
+@user_bp.route('/export-csv', methods=['POST'])
+@jwt_required()
+def trigger_csv_export():
+    """
+    Trigger CSV export of user's parking history
+    """
+    current_user_id = get_jwt_identity()
+    try:
+        current_user_id = int(current_user_id)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Invalid token identity'}), 401
+    
+    # Verify user exists
+    user = User.query.get(current_user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    try:
+        task = celery_app.send_task('tasks.csv_export', args=[current_user_id])
+        
+        return jsonify({
+            'status': 'processing',
+            'message': 'CSV export started. You will receive an email shortly.',
+            'task_id': task.id
+        }), 202
+    except Exception as e:
+        print(f"[ERROR] Failed to start task: {e}")
+        return jsonify({
+            'error': 'Failed to start CSV export',
+            'details': str(e)
+        }), 500
+
+
+@user_bp.route('/export-status/<task_id>', methods=['GET'])
+@jwt_required()
+def get_export_status(task_id):
+    """
+    Check status of CSV export task
+    """
+    try:
+        # We use the app instance to look up the result
+        task = celery_app.AsyncResult(task_id)
+        
+        # .state, .status, and .result are the standard attributes
+        state = task.state
+        
+        response = {
+            'status': state,
+            'task_id': task_id
+        }
+
+        if state == 'PENDING':
+            # PENDING means the task is waiting in the queue OR the ID is unknown
+            response['message'] = 'Task is waiting in queue...'
+            response['status'] = 'pending'
+            
+        elif state == 'STARTED' or state == 'PROGRESS':
+            response['status'] = 'processing'
+            # If you set custom state in the task using update_state, it appears in task.info
+            info = task.info if isinstance(task.info, dict) else {}
+            response['message'] = info.get('message', 'Processing export...')
+            
+        elif state == 'SUCCESS':
+            response['status'] = 'success'
+            # task.result contains the return value of the function (the dict we returned in the task)
+            result = task.result if isinstance(task.result, dict) else {}
+            response['message'] = 'Export completed! Check your email.'
+            response['filename'] = result.get('filename')
+            
+        elif state == 'FAILURE':
+            response['status'] = 'error'
+            response['message'] = 'Export failed.'
+            # task.result would be the exception object here
+            response['error_details'] = str(task.result)
+            
+        return jsonify(response), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Export status check failed: {e}")
+        return jsonify({'status': 'error', 'message': 'Failed to check status'}), 500

@@ -259,6 +259,85 @@
       </div>
     </div>
 
+    <!-- Export Reservations -->
+    <div class="card mb-4 shadow-sm border-info">
+  <div class="card-header bg-info text-white">
+    <h5 class="mb-0">
+      <i class="fas fa-download me-2"></i>
+      Export Your Data
+    </h5>
+  </div>
+  <div class="card-body">
+    <p class="text-muted mb-3">Download a CSV file of all your parking reservations and history.</p>
+    
+    <div v-if="exportCompleted" class="alert alert-success">
+      <i class="fas fa-check-circle me-2"></i>
+      <strong>Export Completed!</strong> Check your email for the CSV file with all your parking history.
+      <button 
+        @click="resetExport"
+        class="btn btn-outline-success btn-sm ms-2"
+      >
+        Export Again
+      </button>
+    </div>
+
+    <div v-else-if="exportError" class="alert alert-danger">
+      <i class="fas fa-exclamation-circle me-2"></i>
+      <strong>Export Failed:</strong> {{ exportError }}
+      <button 
+        @click="resetExport"
+        class="btn btn-outline-danger btn-sm ms-2"
+      >
+        Try Again
+      </button>
+    </div>
+
+    <div v-else-if="exportInProgress || exportTaskId">
+      <div class="alert alert-info mb-3">
+        <i class="fas fa-spinner fa-spin me-2"></i>
+        {{ exportStatusMessage }}
+      </div>
+      
+      <div class="progress mb-3" v-if="exportProgress !== null">
+        <div 
+          class="progress-bar progress-bar-striped progress-bar-animated" 
+          role="progressbar"
+          :style="{ width: exportProgress + '%' }"
+          :aria-valuenow="exportProgress"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          {{ exportProgress }}%
+        </div>
+      </div>
+
+      <button 
+        @click="cancelExport"
+        class="btn btn-outline-secondary btn-sm"
+      >
+        <i class="fas fa-times me-1"></i>
+        Cancel Export
+      </button>
+    </div>
+
+    <div v-else>
+      <button 
+        @click="triggerCsvExport"
+        class="btn btn-info"
+        :disabled="processing"
+      >
+        <i class="fas fa-download me-2"></i>
+        {{ processing ? 'Processing...' : 'Export as CSV' }}
+      </button>
+      <p class="mt-2 text-muted small">
+        <i class="fas fa-info-circle"></i>
+        The CSV file will be sent to your email.
+      </p>
+    </div>
+
+  </div>
+</div>
+
     <!-- Account Info -->
     <div class="card shadow-sm">
       <div class="card-header">
@@ -313,7 +392,15 @@ export default {
         total_reservations: 0,
         total_spent: 0,
         completed_reservations: 0
-      }
+      },
+      // CSV Export state
+      exportTaskId: null,
+      exportInProgress: false,
+      exportCompleted: false,
+      exportError: null,
+      exportProgress: null,
+      exportStatusMessage: 'Starting CSV export...',
+      exportCheckInterval: null
     }
   },
   computed: {
@@ -468,6 +555,116 @@ export default {
         'cancelled': 'bg-danger'
       }
       return classes[status] || 'bg-secondary'
+    },
+    
+    // ─────────────────────────────────────────────────────────────
+    // CSV EXPORT METHODS
+    // ─────────────────────────────────────────────────────────────
+    
+    async triggerCsvExport() {
+      this.exportInProgress = true
+      this.exportError = null
+      this.exportCompleted = false
+      this.exportProgress = null
+      
+      try {
+        // Trigger the export task
+        const response = await this.$api.user.exportCsv()
+        
+        if (response.status === 202) {
+          // Task accepted and started
+          this.exportTaskId = response.data.task_id
+          this.exportStatusMessage = response.data.message || 'Export started, checking status...'
+          
+          // Start polling for status
+          this.startExportStatusCheck()
+        } else {
+          throw new Error('Unexpected response from export endpoint')
+        }
+      } catch (error) {
+        console.error('Error triggering CSV export:', error)
+        this.exportError = error.response?.data?.error || error.message || 'Failed to start export'
+        this.exportInProgress = false
+        this.$store.dispatch('setAlert', {
+          message: `Export failed: ${this.exportError}`,
+          type: 'error'
+        })
+      }
+    },
+    
+    startExportStatusCheck() {
+      // Check status every 2 seconds
+      this.exportCheckInterval = setInterval(() => {
+        this.checkExportStatus()
+      }, 2000)
+    },
+    
+    async checkExportStatus() {
+      if (!this.exportTaskId) {
+        clearInterval(this.exportCheckInterval)
+        return
+      }
+      
+      try {
+        const response = await this.$api.user.getExportStatus(this.exportTaskId)
+        const status = response.data.status
+        
+        this.exportStatusMessage = response.data.message || `Export ${status}...`
+        
+        if (response.data.progress !== undefined) {
+          this.exportProgress = response.data.progress
+        }
+        
+        if (status === 'success') {
+          // Export completed successfully
+          clearInterval(this.exportCheckInterval)
+          this.exportCompleted = true
+          this.exportInProgress = false
+          
+          this.$store.dispatch('setAlert', {
+            message: 'CSV export completed! Check your email for the file.',
+            type: 'success'
+          })
+        } else if (status === 'error') {
+          // Export failed
+          clearInterval(this.exportCheckInterval)
+          this.exportError = response.data.error || 'Export failed for unknown reason'
+          this.exportInProgress = false
+          
+          this.$store.dispatch('setAlert', {
+            message: `Export error: ${this.exportError}`,
+            type: 'error'
+          })
+        }
+        // If pending or processing, continue polling
+      } catch (error) {
+        console.error('Error checking export status:', error)
+        // Continue polling even if there's an error (task might still be processing)
+      }
+    },
+    
+    cancelExport() {
+      if (this.exportCheckInterval) {
+        clearInterval(this.exportCheckInterval)
+      }
+      this.resetExport()
+      
+      this.$store.dispatch('setAlert', {
+        message: 'Export cancelled',
+        type: 'info'
+      })
+    },
+    
+    resetExport() {
+      if (this.exportCheckInterval) {
+        clearInterval(this.exportCheckInterval)
+      }
+      this.exportTaskId = null
+      this.exportInProgress = false
+      this.exportCompleted = false
+      this.exportError = null
+      this.exportProgress = null
+      this.exportStatusMessage = 'Starting CSV export...'
     }
   },
   

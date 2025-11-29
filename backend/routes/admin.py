@@ -1,10 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from models import db, User, ParkingLot, ParkingSpot, Reservation
-from cache_config import cache
 from utils.cache_utils import (
-    CACHE_TIMEOUT_ADMIN_DASH,
-    CACHE_TIMEOUT_LOTS,
     invalidate_lot_cache,
     invalidate_all_lots_cache,
     invalidate_admin_dashboard_cache
@@ -13,6 +10,7 @@ from functools import wraps
 import pytz
 from datetime import datetime, timedelta
 from sqlalchemy import func
+from celery_app import celery_app
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -33,7 +31,6 @@ def admin_required():
 
 @admin_bp.route('/dashboard', methods=['GET'])
 @admin_required()
-@cache.cached(timeout=CACHE_TIMEOUT_ADMIN_DASH)
 def dashboard():
     """Admin dashboard - summary statistics"""
     total_lots = ParkingLot.query.count()
@@ -51,10 +48,10 @@ def dashboard():
     completed = Reservation.query.filter_by(status='completed').all()
     total_revenue = sum(res.parking_cost or 0 for res in completed)
     
-    # Get recent parking lots
+    # recent parking lots
     recent_lots = ParkingLot.query.order_by(ParkingLot.created_at.desc()).limit(5).all()
     
-    # Get recent users
+    # recent users
     recent_users = User.query.filter_by(is_admin=False).order_by(User.created_at.desc()).limit(5).all()
     
     return jsonify({
@@ -75,38 +72,29 @@ def dashboard():
 
 @admin_bp.route('/dashboard/daily-summary', methods=['GET'])
 @admin_required()
-@cache.cached(timeout=CACHE_TIMEOUT_ADMIN_DASH)
 def daily_summary():
-    """Get daily revenue and bookings for last 7 days with reservation status breakdown"""
+    """Get daily revenue and bookings for last 7 days"""
     ist = pytz.timezone('Asia/Kolkata')
-    
-    # Calculate date range for last 7 days
     today = datetime.now(ist).replace(hour=0, minute=0, second=0, microsecond=0)
     seven_days_ago = today - timedelta(days=6)
     
     daily_data = []
     
-    # Get data for each day
     for i in range(7):
         day_date = seven_days_ago + timedelta(days=i)
         day_start = day_date.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_date.replace(hour=23, minute=59, second=59, microsecond=999999)
         
-        # Convert to UTC for database query
         day_start_utc = day_start.astimezone(pytz.utc).replace(tzinfo=None)
         day_end_utc = day_end.astimezone(pytz.utc).replace(tzinfo=None)
         
-        # Get completed reservations for this day
         completed_reservations = Reservation.query.filter(
             Reservation.status == 'completed',
             Reservation.check_out_timestamp >= day_start_utc,
             Reservation.check_out_timestamp <= day_end_utc
         ).all()
         
-        # Calculate daily revenue
         daily_revenue = sum(res.parking_cost or 0 for res in completed_reservations)
-        
-        # Count bookings (completed check-outs for this day)
         daily_bookings = len(completed_reservations)
         
         daily_data.append({
@@ -115,7 +103,6 @@ def daily_summary():
             'bookings': daily_bookings
         })
     
-    # Get reservation status breakdown
     pending_count = Reservation.query.filter_by(status='pending').count()
     active_count = Reservation.query.filter_by(status='active').count()
     completed_count = Reservation.query.filter_by(status='completed').count()
@@ -134,7 +121,6 @@ def daily_summary():
 
 @admin_bp.route('/parking-lots', methods=['GET'])
 @admin_required()
-@cache.cached(timeout=CACHE_TIMEOUT_LOTS)
 def get_all_parking_lots():
     """Get all parking lots with details"""
     lots = ParkingLot.query.all()
@@ -142,53 +128,64 @@ def get_all_parking_lots():
 
 
 @admin_bp.route('/parking-lots', methods=['POST'])
-@admin_required()
+@jwt_required()
 def create_parking_lot():
     """Create a new parking lot with spots"""
     data = request.get_json()
     
-    # Validate input
     required_fields = ['name', 'address', 'pin_code', 'price_per_hour', 'number_of_spots']
     if not all(field in data for field in required_fields):
         return jsonify({'error': 'Missing required fields'}), 400
     
-    # Check if lot name already exists
     if ParkingLot.query.filter_by(name=data['name']).first():
         return jsonify({'error': 'Parking lot with this name already exists'}), 400
     
-    # Create parking lot
-    lot = ParkingLot(
-        name=data['name'],
-        address=data['address'],
-        pin_code=data['pin_code'],
-        price_per_hour=data['price_per_hour'],
-        number_of_spots=data['number_of_spots'],
-        city=data.get('city'),
-        state=data.get('state')
-    )
-    
-    db.session.add(lot)
-    db.session.flush()  # Get lot.id before creating spots
-    
-    # Auto-create parking spots
-    for i in range(1, data['number_of_spots'] + 1):
-        spot = ParkingSpot(
-            spot_number=f"S{i:03d}",  # S001, S002, etc.
-            lot_id=lot.id,
-            status='A'  # Available
+    try:
+        lot = ParkingLot(
+            name=data['name'],
+            address=data['address'],
+            pin_code=data['pin_code'],
+            price_per_hour=data['price_per_hour'],
+            number_of_spots=data['number_of_spots'],
+            city=data.get('city'),
+            state=data.get('state')
         )
-        db.session.add(spot)
+        
+        db.session.add(lot)
+        db.session.flush()
+        
+        for i in range(1, data['number_of_spots'] + 1):
+            spot = ParkingSpot(
+                spot_number=f"S{i:03d}", 
+                lot_id=lot.id,
+                status='A'  
+            )
+            db.session.add(spot)
+        
+        db.session.commit()
     
-    db.session.commit()
-    
-    # Invalidate cache after creating lot
-    invalidate_all_lots_cache()
-    invalidate_admin_dashboard_cache()
-    
-    return jsonify({
-        'message': f'Parking lot created with {data["number_of_spots"]} spots',
-        'parking_lot': lot.to_dict()
-    }), 201
+        try:
+            invalidate_all_lots_cache()
+            invalidate_admin_dashboard_cache()
+        except Exception as e:
+            print(f"Cache invalidation error: {e}")
+
+        # Trigger Notification
+        try:
+            celery_app.send_task('tasks.notify_new_parking_lot', args=[lot.id])
+            print(f"[ADMIN] Triggered GChat notification for Lot {lot.id}")
+        except Exception as e:
+            print(f"[ADMIN] Failed to trigger notification task: {e}")
+
+        return jsonify({
+            'message': f'Parking lot created with {data["number_of_spots"]} spots',
+            'parking_lot': lot.to_dict()
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Failed to create parking lot: {e}")
+        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 
 @admin_bp.route('/parking-lots/<int:lot_id>', methods=['PUT'])
@@ -198,72 +195,71 @@ def update_parking_lot(lot_id):
     lot = ParkingLot.query.get_or_404(lot_id)
     data = request.get_json()
     
-    # Update fields
-    if 'name' in data:
-        # Check if new name is taken by another lot
-        existing = ParkingLot.query.filter_by(name=data['name']).first()
-        if existing and existing.id != lot_id:
-            return jsonify({'error': 'Parking lot name already exists'}), 400
-        lot.name = data['name']
-    
-    if 'address' in data:
-        lot.address = data['address']
-    if 'pin_code' in data:
-        lot.pin_code = data['pin_code']
-    if 'price_per_hour' in data:
-        lot.price_per_hour = data['price_per_hour']
-    if 'city' in data:
-        lot.city = data['city']
-    if 'state' in data:
-        lot.state = data['state']
-    if 'is_active' in data:
-        lot.is_active = data['is_active']
-    
-    # Handle spot increase/decrease
-    if 'number_of_spots' in data:
-        current_spots = lot.number_of_spots
-        new_spots = data['number_of_spots']
+    try:
+        if 'name' in data:
+            existing = ParkingLot.query.filter_by(name=data['name']).first()
+            if existing and existing.id != lot_id:
+                return jsonify({'error': 'Parking lot name already exists'}), 400
+            lot.name = data['name']
         
-        if new_spots > current_spots:
-            # Add new spots
-            for i in range(current_spots + 1, new_spots + 1):
-                spot = ParkingSpot(
-                    spot_number=f"S{i:03d}",
-                    lot_id=lot.id,
-                    status='A'
-                )
-                db.session.add(spot)
-            lot.number_of_spots = new_spots
-        elif new_spots < current_spots:
-            # Can only delete available spots
-            spots_to_delete = current_spots - new_spots
-            available_spots = ParkingSpot.query.filter_by(
-                lot_id=lot_id, status='A'
-            ).order_by(ParkingSpot.id.desc()).limit(spots_to_delete).all()
+        if 'address' in data: lot.address = data['address']
+        if 'pin_code' in data: lot.pin_code = data['pin_code']
+        if 'price_per_hour' in data: lot.price_per_hour = data['price_per_hour']
+        if 'city' in data: lot.city = data['city']
+        if 'state' in data: lot.state = data['state']
+        if 'is_active' in data: lot.is_active = data['is_active']
+        
+        if 'number_of_spots' in data:
+            current_spots = lot.number_of_spots
+            new_spots = int(data['number_of_spots'])
             
-            if len(available_spots) < spots_to_delete:
-                occupied_count = ParkingSpot.query.filter(
-                    ParkingSpot.lot_id == lot_id,
-                    ParkingSpot.status != 'A'
-                ).count()
-                return jsonify({
-                    'error': f'Cannot reduce spots. {occupied_count} spot(s) are currently occupied or reserved. Only available spots can be removed.'
-                }), 400
-            
-            for spot in available_spots:
-                db.session.delete(spot)
-            lot.number_of_spots = new_spots
-    
-    db.session.commit()
-    
-    # Invalidate cache after updating lot
-    invalidate_lot_cache(lot_id)
-    invalidate_admin_dashboard_cache()
-    
-    return jsonify({
-        'message': 'Parking lot updated successfully',
-        'parking_lot': lot.to_dict()
-    }), 200
+            if new_spots > current_spots:
+                for i in range(current_spots + 1, new_spots + 1):
+                    spot = ParkingSpot(
+                        spot_number=f"S{i:03d}",
+                        lot_id=lot.id,
+                        status='A'
+                    )
+                    db.session.add(spot)
+                lot.number_of_spots = new_spots
+                
+            elif new_spots < current_spots:
+                # We can only remove spots if they are Available and at the end of the list preferably
+                spots_to_delete = current_spots - new_spots
+                
+                # Finding available spots to delete 
+                available_spots = ParkingSpot.query.filter_by(
+                    lot_id=lot_id, status='A'
+                ).order_by(ParkingSpot.id.desc()).limit(spots_to_delete).all()
+                
+                if len(available_spots) < spots_to_delete:
+                    # Not enough available spots to delete
+                    return jsonify({
+                        'error': f'Cannot reduce to {new_spots}. Some spots are occupied or reserved.'
+                    }), 400
+                
+                for spot in available_spots:
+                    db.session.delete(spot)
+                lot.number_of_spots = new_spots
+        
+        db.session.commit()
+        
+        # Invalidate User Caches
+        try:
+            invalidate_lot_cache(lot_id)
+            invalidate_all_lots_cache()
+            invalidate_admin_dashboard_cache()
+        except Exception:
+            pass
+        
+        return jsonify({
+            'message': 'Parking lot updated successfully',
+            'parking_lot': lot.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 @admin_bp.route('/parking-lots/<int:lot_id>', methods=['DELETE'])
@@ -272,33 +268,40 @@ def delete_parking_lot(lot_id):
     """Delete parking lot (only if all spots are available)"""
     lot = ParkingLot.query.get_or_404(lot_id)
     
-    # Check if any spot is not available (occupied or reserved)
+    # Check for physical occupancy
     non_available_spots = ParkingSpot.query.filter(
         ParkingSpot.lot_id == lot_id,
         ParkingSpot.status != 'A'
     ).count()
     
     if non_available_spots > 0:
-        return jsonify({'error': 'Cannot delete parking lot. All spots must be empty/available before deletion.'}), 400
+        return jsonify({'error': 'Cannot delete: Some spots are Occupied or Reserved.'}), 400
     
-    # Check if there are any active or pending reservations for this lot
+    # Checking for upcoming reservations (Pending/Active)
     active_reservations = Reservation.query.join(ParkingSpot).filter(
         ParkingSpot.lot_id == lot_id,
         Reservation.status.in_(['active', 'pending'])
     ).count()
     
     if active_reservations > 0:
-        return jsonify({'error': 'Cannot delete parking lot with active or pending reservations.'}), 400
+        return jsonify({'error': 'Cannot delete: Active or Pending reservations exist.'}), 400
     
-    db.session.delete(lot)
-    db.session.commit()
-    
-    # Invalidate cache after deleting lot
-    invalidate_lot_cache(lot_id)
-    invalidate_all_lots_cache()
-    invalidate_admin_dashboard_cache()
-    
-    return jsonify({'message': 'Parking lot deleted successfully'}), 200
+    try:
+        db.session.delete(lot)
+        db.session.commit()
+        
+        # Invalidate User Caches
+        try:
+            invalidate_lot_cache(lot_id)
+            invalidate_all_lots_cache()
+            invalidate_admin_dashboard_cache()
+        except Exception:
+            pass
+        
+        return jsonify({'message': 'Parking lot deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 @admin_bp.route('/parking-lots/<int:lot_id>/spots', methods=['GET'])
@@ -309,10 +312,11 @@ def get_lot_spots(lot_id):
     spots = ParkingSpot.query.filter_by(lot_id=lot_id).all()
     
     result = []
+    ist = pytz.timezone('Asia/Kolkata')
+
     for spot in spots:
         spot_data = spot.to_dict()
         
-        # Add current reservation info if occupied or reserved
         if spot.status in ['O', 'R']:
             reservation = Reservation.query.filter(
                 Reservation.spot_id == spot.id,
@@ -320,11 +324,9 @@ def get_lot_spots(lot_id):
             ).order_by(Reservation.booking_timestamp.desc()).first()
 
             if reservation:
-                ist = pytz.timezone('Asia/Kolkata')
-                
                 spot_data['current_reservation'] = {
                     'id': reservation.id,
-                    'user': reservation.user.username if reservation.user else None,
+                    'user': reservation.user.username if reservation.user else 'Unknown',
                     'vehicle_number': reservation.vehicle_number,
                     'check_in_time': pytz.utc.localize(reservation.check_in_timestamp).astimezone(ist).isoformat() if reservation.check_in_timestamp else None,
                     'booking_time': pytz.utc.localize(reservation.booking_timestamp).astimezone(ist).isoformat() if reservation.booking_timestamp else None,
@@ -337,78 +339,43 @@ def get_lot_spots(lot_id):
         'spots': result
     }), 200
 
-
 @admin_bp.route('/users', methods=['GET'])
 @admin_required()
 def get_all_users():
-    """Get all registered users with reservation counts"""
     users = User.query.filter_by(is_admin=False).all()
     users_data = []
     for user in users:
         user_dict = user.to_dict()
-        # Add reservation count
         user_dict['reservation_count'] = Reservation.query.filter_by(user_id=user.id).count()
         users_data.append(user_dict)
     return jsonify(users_data), 200
 
-
 @admin_bp.route('/users/<int:user_id>', methods=['GET'])
 @admin_required()
 def get_user_details(user_id):
-    """Get user details with reservation history"""
     user = User.query.get_or_404(user_id)
-    
-    if user.is_admin:
-        return jsonify({'error': 'Cannot view admin details'}), 403
-    
-    reservations = Reservation.query.filter_by(user_id=user_id).order_by(
-        Reservation.booking_timestamp.desc()
-    ).all()
-    
-    return jsonify({
-        'user': user.to_dict(),
-        'reservations': [res.to_dict() for res in reservations]
-    }), 200
-
+    if user.is_admin: return jsonify({'error': 'Cannot view admin details'}), 403
+    reservations = Reservation.query.filter_by(user_id=user_id).order_by(Reservation.booking_timestamp.desc()).all()
+    return jsonify({'user': user.to_dict(), 'reservations': [res.to_dict() for res in reservations]}), 200
 
 @admin_bp.route('/reservations', methods=['GET'])
 @admin_required()
 def get_all_reservations():
-    """Get all reservations"""
-    status = request.args.get('status')  # Filter by status
-    
+    status = request.args.get('status')
     query = Reservation.query
-    if status:
-        query = query.filter_by(status=status)
-    
+    if status: query = query.filter_by(status=status)
     reservations = query.order_by(Reservation.booking_timestamp.desc()).all()
     return jsonify([res.to_dict() for res in reservations]), 200
-
 
 @admin_bp.route('/spots/<int:spot_id>/history', methods=['GET'])
 @admin_required()
 def get_spot_history(spot_id):
-    """Get reservation history for a specific spot"""
     spot = ParkingSpot.query.get_or_404(spot_id)
-    
-    # Get all reservations for this spot
-    reservations = Reservation.query.filter_by(spot_id=spot_id).order_by(
-        Reservation.booking_timestamp.desc()
-    ).all()
-    
+    reservations = Reservation.query.filter_by(spot_id=spot_id).order_by(Reservation.booking_timestamp.desc()).all()
     history = []
     for res in reservations:
         res_data = res.to_dict()
-        # Add user details
         if res.user:
-            res_data['user_details'] = {
-                'id': res.user.id,
-                'username': res.user.username,
-                'email': res.user.email
-            }
+            res_data['user_details'] = {'id': res.user.id, 'username': res.user.username, 'email': res.user.email}
         history.append(res_data)
-    
-    return jsonify({
-        'spot': spot.to_dict(),
-        'history': history
-    }), 200
+    return jsonify({'spot': spot.to_dict(), 'history': history}), 200

@@ -93,6 +93,10 @@ export const api = {
     checkIn: (reservationId) => apiClient.post(`/user/reservations/${reservationId}/checkin`),
     checkOut: (reservationId) => apiClient.post(`/user/reservations/${reservationId}/release`),
     cancelReservation: (reservationId) => apiClient.post(`/user/reservations/${reservationId}/cancel`),
+    
+    // CSV Export endpoints
+    exportCsv: () => apiClient.post('/user/export-csv'),
+    getExportStatus: (taskId) => apiClient.get(`/user/export-status/${taskId}`),
   },
 
   // Admin endpoints

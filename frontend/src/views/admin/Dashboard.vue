@@ -52,15 +52,6 @@
       <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
         <div class="card bg-white text-dark shadow-sm h-100">
           <div class="card-body d-flex flex-column justify-content-between">
-            <h5 class="card-title mb-0 text-warning" style="font-size: 0.9rem;">Reserved Spots</h5>
-            <p class="card-text fs-4 text-dark text-end mt-2">{{ stats.reservedSpots || 0 }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
-        <div class="card bg-white text-dark shadow-sm h-100">
-          <div class="card-body d-flex flex-column justify-content-between">
             <h5 class="card-title mb-0 text-info" style="font-size: 0.9rem;">Pending Reservations</h5>
             <p class="card-text fs-4 text-dark text-end mt-2">{{ stats.pendingReservations || 0 }}</p>
           </div>
