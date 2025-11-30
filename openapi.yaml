@@ -1,0 +1,1245 @@
+openapi: 3.0.0
+info:
+  title: Vehicle Parking App API
+  description: API for managing vehicle parking reservations, spots, and user accounts
+  version: 2.0.0
+  contact:
+    name: Vehicle Parking Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.parking-app.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: User
+    description: Regular user endpoints for parking reservations
+  - name: Admin
+    description: Administrator endpoints for managing parking lots and users
+  - name: Root
+    description: Root and utility endpoints
+
+paths:
+  /:
+    get:
+      tags:
+        - Root
+      summary: API root endpoint
+      description: Returns API version and available endpoints
+      responses:
+        '200':
+          description: API information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  version:
+                    type: string
+                  endpoints:
+                    type: object
+                    properties:
+                      auth:
+                        type: string
+                      admin:
+                        type: string
+                      user:
+                        type: string
+
+  /daily_reminder:
+    get:
+      tags:
+        - Root
+      summary: Trigger daily reminder task (Testing)
+      description: Manually trigger the daily reminder task. For testing purposes only.
+      responses:
+        '200':
+          description: Task started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  job_id:
+                    type: string
+
+  /monthly_report:
+    get:
+      tags:
+        - Root
+      summary: Trigger monthly report task (Testing)
+      description: Manually trigger the monthly report task. For testing purposes only.
+      responses:
+        '200':
+          description: Task started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  job_id:
+                    type: string
+
+  # ==================== AUTHENTICATION ROUTES ====================
+
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  example: john_doe
+                full_name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  format: password
+                  example: securepassword123
+                phone_number:
+                  type: string
+                  example: "9876543210"
+                address:
+                  type: string
+                  example: 123 Main St
+                pin_code:
+                  type: string
+                  example: "110001"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Validation error or user already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user/admin
+      description: Authenticate user and return JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: john_doe
+                password:
+                  type: string
+                  format: password
+                  example: securepassword123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+                  redirect:
+                    type: string
+                    example: /admin/dashboard
+        '400':
+          description: Missing credentials
+        '401':
+          description: Invalid credentials
+
+  /api/auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user info
+      description: Retrieve current authenticated user information
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+  # ==================== USER ROUTES ====================
+
+  /api/user/dashboard:
+    get:
+      tags:
+        - User
+      summary: Get user dashboard
+      description: Get user personal statistics and active reservation
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_reservations:
+                    type: integer
+                  completed_reservations:
+                    type: integer
+                  total_spent:
+                    type: number
+                    format: float
+                  active_reservation:
+                    $ref: '#/components/schemas/Reservation'
+
+  /api/user/parking-lots:
+    get:
+      tags:
+        - User
+      summary: Get all available parking lots
+      description: Retrieve list of active parking lots with optional search
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          description: Search by name, address, pin code, or city
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of parking lots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParkingLot'
+
+  /api/user/parking-lots/{lot_id}:
+    get:
+      tags:
+        - User
+      summary: Get parking lot details
+      description: Retrieve specific parking lot information
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Parking lot details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingLot'
+        '404':
+          description: Parking lot not found
+
+  /api/user/parking-lots/{lot_id}/book:
+    post:
+      tags:
+        - User
+      summary: Book a parking spot
+      description: Reserve an available parking spot in a lot
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - vehicle_number
+              properties:
+                vehicle_number:
+                  type: string
+                  example: "DL01AB1234"
+      responses:
+        '201':
+          description: Spot booked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  reservation:
+                    $ref: '#/components/schemas/Reservation'
+                  spot:
+                    $ref: '#/components/schemas/ParkingSpot'
+        '400':
+          description: Invalid vehicle or reservation already exists
+        '404':
+          description: No available spots or lot not found
+
+  /api/user/reservations:
+    get:
+      tags:
+        - User
+      summary: Get user reservations
+      description: Retrieve user's reservation history with optional status filter
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter by reservation status (pending, active, completed, cancelled)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of reservations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+
+  /api/user/reservations/{reservation_id}:
+    get:
+      tags:
+        - User
+      summary: Get reservation details
+      description: Retrieve specific reservation information
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reservation details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  reservation:
+                    $ref: '#/components/schemas/Reservation'
+                  spot:
+                    $ref: '#/components/schemas/ParkingSpot'
+                  parking_lot:
+                    $ref: '#/components/schemas/ParkingLot'
+        '403':
+          description: Unauthorized
+        '404':
+          description: Reservation not found
+
+  /api/user/reservations/{reservation_id}/checkin:
+    post:
+      tags:
+        - User
+      summary: Check in to parking spot
+      description: Mark vehicle as parked (change spot status to occupied)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Checked in successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  reservation:
+                    $ref: '#/components/schemas/Reservation'
+        '400':
+          description: Invalid reservation state
+        '403':
+          description: Unauthorized
+        '404':
+          description: Reservation or parking spot not found
+
+  /api/user/reservations/{reservation_id}/release:
+    post:
+      tags:
+        - User
+      summary: Release/checkout parking spot
+      description: Vacate the parking spot and complete the reservation
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Spot released successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  reservation:
+                    $ref: '#/components/schemas/Reservation'
+                  cost:
+                    type: number
+                    format: float
+        '400':
+          description: Invalid reservation state
+        '403':
+          description: Unauthorized
+
+  /api/user/reservations/{reservation_id}/cancel:
+    post:
+      tags:
+        - User
+      summary: Cancel pending reservation
+      description: Cancel a pending reservation and free up the spot
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reservation cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  reservation:
+                    $ref: '#/components/schemas/Reservation'
+        '400':
+          description: Only pending reservations can be cancelled
+        '403':
+          description: Unauthorized
+
+  /api/user/reservations/{reservation_id}/checkout-details:
+    get:
+      tags:
+        - User
+      summary: Get checkout details
+      description: Calculate and display checkout cost and duration without performing checkout
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Checkout details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spot_id:
+                    type: string
+                  vehicle_number:
+                    type: string
+                  check_in_time:
+                    type: string
+                    format: date-time
+                  check_out_time:
+                    type: string
+                    format: date-time
+                  duration:
+                    type: string
+                    example: "2h 30m"
+                  cost:
+                    type: number
+                    format: float
+
+  /api/user/profile:
+    get:
+      tags:
+        - User
+      summary: Get user profile
+      description: Retrieve current user's profile information
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+
+    put:
+      tags:
+        - User
+      summary: Update user profile
+      description: Update user's profile information
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                full_name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone_number:
+                  type: string
+                address:
+                  type: string
+                pincode:
+                  type: string
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Email already in use
+
+  /api/user/change-password:
+    post:
+      tags:
+        - User
+      summary: Change user password
+      description: Update user's password
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - current_password
+                - new_password
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Password changed successfully
+        '400':
+          description: Missing required fields
+        '401':
+          description: Current password is incorrect
+
+  /api/user/export-csv:
+    post:
+      tags:
+        - User
+      summary: Export parking history to CSV
+      description: Trigger background task to export user's parking history to CSV and send via email
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: CSV export started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  task_id:
+                    type: string
+        '500':
+          description: Failed to start CSV export
+
+  /api/user/export-status/{task_id}:
+    get:
+      tags:
+        - User
+      summary: Get CSV export status
+      description: Check the status of CSV export task
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Export task status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [pending, processing, success, error]
+                  task_id:
+                    type: string
+                  message:
+                    type: string
+                  filename:
+                    type: string
+
+  # ==================== ADMIN ROUTES ====================
+
+  /api/admin/dashboard:
+    get:
+      tags:
+        - Admin
+      summary: Get admin dashboard
+      description: Get comprehensive parking lot and reservation statistics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Admin dashboard statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_lots:
+                    type: integer
+                  total_spots:
+                    type: integer
+                  occupied_spots:
+                    type: integer
+                  reserved_spots:
+                    type: integer
+                  available_spots:
+                    type: integer
+                  total_users:
+                    type: integer
+                  active_reservations:
+                    type: integer
+                  pending_reservations:
+                    type: integer
+                  completed_reservations:
+                    type: integer
+                  total_revenue:
+                    type: number
+                    format: float
+                  recent_lots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ParkingLot'
+                  recent_users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+        '403':
+          description: Admin access required
+
+  /api/admin/dashboard/daily-summary:
+    get:
+      tags:
+        - Admin
+      summary: Get daily summary
+      description: Get daily revenue and bookings for the last 7 days
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Daily summary data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  daily_data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          example: "Nov 23"
+                        revenue:
+                          type: number
+                          format: float
+                        bookings:
+                          type: integer
+                  reservation_status:
+                    type: object
+                    properties:
+                      pending:
+                        type: integer
+                      active:
+                        type: integer
+                      completed:
+                        type: integer
+                      cancelled:
+                        type: integer
+        '403':
+          description: Admin access required
+
+  /api/admin/parking-lots:
+    get:
+      tags:
+        - Admin
+      summary: Get all parking lots
+      description: Retrieve all parking lots with full details
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of all parking lots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParkingLot'
+        '403':
+          description: Admin access required
+
+    post:
+      tags:
+        - Admin
+      summary: Create parking lot
+      description: Create a new parking lot with specified number of spots
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - address
+                - pin_code
+                - price_per_hour
+                - number_of_spots
+              properties:
+                name:
+                  type: string
+                  example: Downtown Parking
+                address:
+                  type: string
+                  example: 123 Main Street
+                pin_code:
+                  type: string
+                  example: "110001"
+                price_per_hour:
+                  type: number
+                  format: float
+                  example: 50.00
+                number_of_spots:
+                  type: integer
+                  example: 100
+                city:
+                  type: string
+                  example: Delhi
+                state:
+                  type: string
+                  example: Delhi
+      responses:
+        '201':
+          description: Parking lot created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  parking_lot:
+                    $ref: '#/components/schemas/ParkingLot'
+        '400':
+          description: Missing required fields or duplicate name
+        '403':
+          description: Admin access required
+
+  /api/admin/parking-lots/{lot_id}:
+    put:
+      tags:
+        - Admin
+      summary: Update parking lot
+      description: Update parking lot details and manage spot count
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                pin_code:
+                  type: string
+                price_per_hour:
+                  type: number
+                  format: float
+                city:
+                  type: string
+                state:
+                  type: string
+                is_active:
+                  type: boolean
+                number_of_spots:
+                  type: integer
+      responses:
+        '200':
+          description: Parking lot updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  parking_lot:
+                    $ref: '#/components/schemas/ParkingLot'
+        '400':
+          description: Cannot reduce spots or other validation error
+        '403':
+          description: Admin access required
+
+    delete:
+      tags:
+        - Admin
+      summary: Delete parking lot
+      description: Delete a parking lot (only if all spots are available and no active reservations)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Parking lot deleted successfully
+        '400':
+          description: Cannot delete - spots occupied or active reservations exist
+        '403':
+          description: Admin access required
+
+  /api/admin/parking-lots/{lot_id}/spots:
+    get:
+      tags:
+        - Admin
+      summary: Get lot spots
+      description: Get all parking spots in a specific lot with current reservation details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Parking lot spots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lot:
+                    $ref: '#/components/schemas/ParkingLot'
+                  spots:
+                    type: array
+                    items:
+                      type: object
+                      allOf:
+                        - $ref: '#/components/schemas/ParkingSpot'
+                        - type: object
+                          properties:
+                            current_reservation:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                user:
+                                  type: string
+                                vehicle_number:
+                                  type: string
+                                check_in_time:
+                                  type: string
+                                  format: date-time
+                                booking_time:
+                                  type: string
+                                  format: date-time
+                                status:
+                                  type: string
+        '403':
+          description: Admin access required
+
+  /api/admin/users:
+    get:
+      tags:
+        - Admin
+      summary: Get all users
+      description: Retrieve list of all regular users with reservation count
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  allOf:
+                    - $ref: '#/components/schemas/User'
+                    - type: object
+                      properties:
+                        reservation_count:
+                          type: integer
+        '403':
+          description: Admin access required
+
+  /api/admin/users/{user_id}:
+    get:
+      tags:
+        - Admin
+      summary: Get user details
+      description: Retrieve specific user information with reservation history
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User details with reservations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  reservations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+        '403':
+          description: Cannot view admin details or unauthorized
+        '404':
+          description: User not found
+
+  /api/admin/reservations:
+    get:
+      tags:
+        - Admin
+      summary: Get all reservations
+      description: Retrieve all reservations with optional status filter
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter by reservation status
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of reservations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+        '403':
+          description: Admin access required
+
+  /api/admin/spots/{spot_id}/history:
+    get:
+      tags:
+        - Admin
+      summary: Get spot history
+      description: Get complete reservation history for a specific parking spot
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Spot history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spot:
+                    $ref: '#/components/schemas/ParkingSpot'
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      allOf:
+                        - $ref: '#/components/schemas/Reservation'
+                        - type: object
+                          properties:
+                            user_details:
+                              type: object
+                              properties:
+                                id:
+                                  type: integer
+                                username:
+                                  type: string
+                                email:
+                                  type: string
+        '403':
+          description: Admin access required
+        '404':
+          description: Spot not found
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone_number:
+          type: string
+        address:
+          type: string
+        pin_code:
+          type: string
+        is_admin:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        last_login:
+          type: string
+          format: date-time
+
+    ParkingLot:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        pin_code:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        price_per_hour:
+          type: number
+          format: float
+        number_of_spots:
+          type: integer
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ParkingSpot:
+      type: object
+      properties:
+        id:
+          type: integer
+        lot_id:
+          type: integer
+        spot_number:
+          type: string
+        status:
+          type: string
+          enum:
+            - A
+            - O
+            - R
+          description: "A = Available, O = Occupied, R = Reserved"
+        created_at:
+          type: string
+          format: date-time
+
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        spot_id:
+          type: integer
+        vehicle_number:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - active
+            - completed
+            - cancelled
+        booking_timestamp:
+          type: string
+          format: date-time
+        check_in_timestamp:
+          type: string
+          format: date-time
+          nullable: true
+        check_out_timestamp:
+          type: string
+          format: date-time
+          nullable: true
+        parking_cost:
+          type: number
+          format: float
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+          nullable: true
