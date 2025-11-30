@@ -1,28 +1,22 @@
 <template>
   <div class="home-page">
-    <!-- Hero Section -->
     <section class="hero">
       <div class="container">
         <div class="row">
-          <!-- Left/Center Side - Main Content -->
           <div class="col-lg-7">
             <div class="hero-content">
-              <!-- Brand Logo -->
               <h1 class="brand-title">
                 <span class="brand-park">Park</span><span class="brand-nxt">Nxt</span>
               </h1>
               
-              <!-- Main Heading -->
               <h2 class="main-heading">
                 Your seamless solution for smart parking management.
               </h2>
               
-              <!-- Tagline -->
               <p class="tagline">
                 Find, book, and park effortlessly.
               </p>
               
-              <!-- CTA Buttons -->
               <div class="cta-buttons">
                 <button 
                   @click="authMode = 'login'" 
@@ -38,7 +32,6 @@
             </div>
           </div>
           
-          <!-- Right Side - Auth Forms -->
           <div class="col-lg-5">
             <div class="auth-card" v-if="authMode">
               <Login v-if="authMode === 'login'" @switch-mode="switchAuthMode" />
@@ -49,7 +42,6 @@
       </div>
     </section>
 
-    <!-- Features Section -->
     <section class="features-section">
       <div class="container">
         <h2 class="section-title">Key Features</h2>
@@ -125,7 +117,6 @@ export default {
   min-height: 100vh;
 }
 
-/* Hero Section */
 .hero {
   background-color: #f8f9fa;
   padding: 80px 0;
@@ -138,7 +129,6 @@ export default {
   padding: 40px 0;
 }
 
-/* Brand Title */
 .brand-title {
   font-size: 3rem;
   font-weight: 700;
@@ -153,7 +143,6 @@ export default {
   color: #4285f4;
 }
 
-/* Main Heading */
 .main-heading {
   font-size: 2rem;
   font-weight: 400;
@@ -162,14 +151,12 @@ export default {
   line-height: 1.5;
 }
 
-/* Tagline */
 .tagline {
   font-size: 1.1rem;
   color: #5f6368;
   margin-bottom: 2.5rem;
 }
 
-/* CTA Buttons */
 .cta-buttons {
   margin-top: 2rem;
 }
@@ -199,8 +186,6 @@ export default {
   background-color: #4285f4;
   color: #ffffff;
 }
-
-/* Auth Card */
 .auth-card {
   background-color: #ffffff;
   border: 1px solid #dadce0;
@@ -212,7 +197,6 @@ export default {
 
 
 
-/* Features Section */
 .features-section {
   background-color: #ffffff;
   padding: 80px 0;

@@ -6,17 +6,13 @@ import axios from 'axios'
 import { api } from './services/api'
 import { formatDateTime, formatDate, formatTime, formatRelativeTime, formatDuration, formatCurrency } from './utils/dateTime'
 
-// Import Bootstrap CSS and JS
+
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap-icons/font/bootstrap-icons.css'
-
-// Import Font Awesome
 import '@fortawesome/fontawesome-free/css/all.css'
 
-// Import Bootstrap JS for interactive components
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 
-// Import custom styles
 import './assets/styles/variables.css'
 import './assets/styles/global.css'
 import './assets/styles/components.css'

@@ -1,4 +1,4 @@
-# tasks/monthly_reports.py
+#! tasks/monthly_reports.py
 from celery import shared_task
 from models import db, User, Reservation, ParkingLot
 from datetime import datetime

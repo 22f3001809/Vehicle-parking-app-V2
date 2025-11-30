@@ -66,7 +66,6 @@
       </div>
     </div>
 
-    <!-- Charts Section (V1 Style) -->
     <h2 class="mt-4 text-primary">Overview Charts</h2>
     <div class="row mb-4">
       <div v-if="loading" class="col-12 text-center py-5">
@@ -220,7 +219,7 @@ export default {
       
       console.log('Chart data prepared:', { last7Days, dailyRevenueAmounts, dailyBookingsCounts })
 
-      // 1. Daily Revenue Chart (Line - Last 7 Days)
+      //Daily Revenue Chart (Line - Last 7 Days)
       const dailyRevenueCtx = document.getElementById('dailyRevenueChart')
       console.log('dailyRevenueCtx element:', dailyRevenueCtx)
       if (dailyRevenueCtx) {
@@ -282,7 +281,7 @@ export default {
       }
       }
 
-      // 2. Daily Bookings Chart (Line - Last 7 Days)
+      // Daily Bookings Chart (Line - Last 7 Days)
       const dailyBookingsCtx = document.getElementById('dailyBookingsChart')
       if (dailyBookingsCtx) {
         try {
@@ -339,7 +338,7 @@ export default {
       }
       }
 
-      // 3. Parking Spot Status (Doughnut)
+      // Parking Spot Status (Doughnut)
       const spotStatusCtx = document.getElementById('spotStatusChart')
       if (spotStatusCtx) {
         try {
@@ -385,7 +384,7 @@ export default {
         }
       }
 
-      // 4. Reservation Status Breakdown (Bar) - using real data from backend
+      //Reservation Status Breakdown (Bar) - using real data from backend
       const reservationStatusCtx = document.getElementById('reservationStatusChart')
       console.log('reservationStatusCtx element:', reservationStatusCtx)
       if (reservationStatusCtx) {

@@ -155,7 +155,6 @@ router.beforeEach(async (to, from, next) => {
   const isAuthenticated = store.getters.isAuthenticated
   const isAdmin = store.getters.isAdmin
 
-  // Redirect authenticated users away from guest-only pages
   if (requiresGuest && isAuthenticated) {
     if (isAdmin) {
       next('/admin/dashboard')
@@ -170,14 +169,12 @@ router.beforeEach(async (to, from, next) => {
     next('/login')
     return
   }
-
-  // Require admin role
+  // Role-based access control
   if (requiresAdmin && !isAdmin) {
     next('/user/dashboard')
     return
   }
 
-  // Require user role (not admin)
   if (requiresUser && isAdmin) {
     next('/admin/dashboard')
     return

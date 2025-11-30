@@ -1,11 +1,3 @@
-"""
-Cache Strategy:
-1. Parking Lots - Cached for 1 hour (updated when admin modifies)
-2. Available Spots - Cached for 5 minutes (frequently changes)
-3. Dashboard Stats - Cached for 5 minutes (user-specific)
-4. Admin Dashboard - Cached for 10 minutes (aggregated data)
-"""
-
 from functools import wraps
 from cache_config import cache, invalidate_pattern, invalidate_cache
 from flask import request
@@ -43,49 +35,28 @@ def cached_with_key(timeout=3600, key_prefix=''):
 
 
 # TIMEOUT CONSTANTS 
-CACHE_TIMEOUT_LOTS = 3600        # 1 hour - Parking lots (admin rarely changes)
-CACHE_TIMEOUT_SPOTS = 300         # 5 minutes - Available spots (frequently changes)
+CACHE_TIMEOUT_LOTS = 300       # 5 minutes - Parking lots 
 CACHE_TIMEOUT_DASHBOARD = 300     # 5 minutes - User dashboard
-CACHE_TIMEOUT_ADMIN_DASH = 600    # 10 minutes - Admin dashboard
-CACHE_TIMEOUT_STATS = 900         # 15 minutes - Statistics
-
-
-CACHE_KEY_PARKING_LOTS = 'parking:lots:*'
-CACHE_KEY_PARKING_LOT = 'parking:lot:{lot_id}'
-CACHE_KEY_LOT_SPOTS = 'parking:spots:{lot_id}'
-CACHE_KEY_USER_DASHBOARD = 'user:dashboard:{user_id}'
-CACHE_KEY_ADMIN_DASHBOARD = 'admin:dashboard'
-CACHE_KEY_DAILY_SUMMARY = 'admin:daily_summary'
-CACHE_KEY_AVAILABLE_LOTS = 'parking:available_lots'
 
 
 def invalidate_lot_cache(lot_id):
-    """
-    Invalidate all cache related to a parking lot
-    
-    Args:
-        lot_id: Parking lot ID
-    """
+    """Called when Admin updates a specific lot."""
     invalidate_cache(
         f'parking:lot:{lot_id}',
-        f'parking:spots:{lot_id}'
+        f'parking:spots:{lot_id}',
+        f'user_parking_lot_details_{lot_id}'
     )
     invalidate_pattern('parking:lots:*')
-    invalidate_pattern('parking:available_lots*')
-
+    invalidate_pattern('user_parking_lots_*')
 
 def invalidate_user_cache(user_id):
     """
-    Invalidate user dashboard cache
-    
-    Args:
-        user_id: User ID
+    Called when User books/cancels.
     """
-    invalidate_cache(f'user:dashboard:{user_id}')
-
+    invalidate_cache(f'user_dashboard_{user_id}')
 
 def invalidate_admin_dashboard_cache():
-    """Invalidate admin dashboard caches"""
+    """Called when revenue changes."""
     invalidate_cache(
         'admin:dashboard',
         'admin:daily_summary',
@@ -93,7 +64,12 @@ def invalidate_admin_dashboard_cache():
     )
     invalidate_pattern('admin:*')
 
-
 def invalidate_all_lots_cache():
-    """Invalidate all parking lots related cache"""
-    invalidate_pattern('parking:*')
+    prefix = "parking_lots_search_"
+    try:
+        for key in list(cache._cache.keys()):
+            if key.startswith(prefix):
+                cache.delete(key)
+        print("[CACHE INVALIDATED] Parking lots cache cleared")
+    except Exception as e:
+        print("Cache invalidation failed:", e)

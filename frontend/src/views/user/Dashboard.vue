@@ -557,10 +557,7 @@ export default {
       return classes[status] || 'bg-secondary'
     },
     
-    // ─────────────────────────────────────────────────────────────
     // CSV EXPORT METHODS
-    // ─────────────────────────────────────────────────────────────
-    
     async triggerCsvExport() {
       this.exportInProgress = true
       this.exportError = null

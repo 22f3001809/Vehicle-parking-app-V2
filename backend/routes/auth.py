@@ -7,7 +7,6 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    """Register a new user"""
     data = request.get_json()
     
     # Validate input

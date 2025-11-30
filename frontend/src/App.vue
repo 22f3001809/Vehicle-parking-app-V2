@@ -1,35 +1,24 @@
 <template>
   <div id="app">
-    <!-- Navigation Bar -->
     <NavBar />
 
-    <!-- Main Content -->
     <main class="main-content">
-      <!-- Loading Overlay -->
       <LoadingOverlay :is-loading="loading" />
-      
-      <!-- Alert Messages -->
       <AlertMessage 
         :message="alertMessage" 
         :type="alertType" 
         @close="clearAlert" 
       />
-      
-      <!-- Router View -->
       <div class="container-fluid">
         <router-view />
       </div>
     </main>
-
-    <!-- Footer -->
-    <AppFooter />
   </div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import NavBar from './components/NavBar.vue'
-import AppFooter from './components/AppFooter.vue'
 import AlertMessage from './components/AlertMessage.vue'
 import LoadingOverlay from './components/LoadingOverlay.vue'
 
@@ -37,7 +26,6 @@ export default {
   name: 'App',
   components: {
     NavBar,
-    AppFooter,
     AlertMessage,
     LoadingOverlay
   },
@@ -70,7 +58,6 @@ export default {
 </script>
 
 <style scoped>
-/* Minimal App-specific styles - most styles are now in global CSS */
 .container-fluid {
   width: 100%;
   padding-right: var(--spacing-lg);

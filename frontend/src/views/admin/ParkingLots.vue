@@ -485,7 +485,6 @@ export default {
 </script>
 
 <style scoped>
-/* Table cell alignment */
 .table td {
   vertical-align: middle;
 }

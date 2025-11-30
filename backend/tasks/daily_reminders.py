@@ -4,8 +4,6 @@ from datetime import datetime, timedelta
 import pytz
 from .email import send_email
 
-print("[TASK] Daily reminders module loaded")
-
 def get_app():
     try:
         from celery_app import _app
@@ -25,7 +23,7 @@ def daily_reminders():
         ist = pytz.timezone('Asia/Kolkata')
         now = datetime.now(ist)
         
-        # 1. CHECK INACTIVE USERS
+        #  CHECK INACTIVE USERS
         seven_days_ago = now - timedelta(days=7)
         seven_days_ago_utc = seven_days_ago.astimezone(pytz.utc).replace(tzinfo=None)
         
@@ -47,7 +45,7 @@ def daily_reminders():
                 print(f"[SENT] Inactive reminder to {u.email}")
             except: pass
 
-        # 2. CHECK PENDING RESERVATIONS OLDER THAN 2 HOURS
+        # CHECK PENDING RESERVATIONS OLDER THAN 2 HOURS
         two_hours_ago = now - timedelta(hours=2)
         two_hours_ago_utc = two_hours_ago.astimezone(pytz.utc).replace(tzinfo=None)
         

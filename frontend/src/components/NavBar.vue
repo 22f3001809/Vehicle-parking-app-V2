@@ -262,7 +262,6 @@ export default {
 </script>
 
 <style scoped>
-/* Component-specific styles if needed */
 .navbar {
   transition: all var(--transition-fast);
 }
@@ -289,7 +288,6 @@ export default {
   }
 }
 
-/* Search dropdown styles */
 .search-dropdown {
   position: relative;
 }
@@ -319,7 +317,6 @@ export default {
   }
 }
 
-/* User dropdown styles */
 .user-dropdown {
   position: relative;
 }

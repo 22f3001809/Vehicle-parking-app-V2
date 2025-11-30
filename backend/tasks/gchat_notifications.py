@@ -3,8 +3,6 @@ from models import db, User, ParkingLot
 import requests
 import os
 
-print("[TASK] Google Chat notifications module loaded")
-
 def get_app():
     try:
         from celery_app import _app

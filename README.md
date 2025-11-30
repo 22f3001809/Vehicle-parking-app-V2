@@ -2,98 +2,27 @@
 
 This is a Vehicle Parking Management System built using Flask, Vue.js, SQLite and Redis for caching and task scheduling. It allows users to book parking spots, check-in/check-out, and provides admin with tools to manage parking lots and view analytics.
 
-## Project Structure
-
-```
-Vehicle-parking-app-V2/
-├── backend/                          # Flask API server
-│   ├── app.py                       # Main Flask application
-│   ├── models.py                    # Database models (User, ParkingLot, Reservation, etc.)
-│   ├── config.py                    # Configuration settings
-│   ├── requirements.txt             # Python dependencies
-│   ├── cache_config.py              # Redis caching configuration
-│   ├── celery_app.py                # Celery task queue setup
-│   ├── routes/                      # API route blueprints
-│   │   ├── auth.py                 # Authentication endpoints
-│   │   ├── user.py                 # User/regular user endpoints
-│   │   └── admin.py                # Admin-only endpoints
-│   ├── tasks/                       # Celery background tasks
-│   │   ├── daily_reminders.py      # Daily reminder notifications
-│   │   ├── monthly_report.py       # Monthly revenue reports
-│   │   ├── email.py                # Email sending tasks
-│   │   ├── csv_export.py           # CSV export tasks
-│   │   └── gchat_notifications.py  # Google Chat notifications
-│   └── utils/                       # Utility functions
-│       ├── admin_setup.py          # Admin user initialization
-│       └── cache_utils.py          # Cache invalidation utilities
-│
-├── frontend/                         # Vue 3 + Vite application
-│   ├── src/
-│   │   ├── App.vue                 # Root component
-│   │   ├── main.js                 # Application entry point
-│   │   ├── router/                 # Vue Router configuration
-│   │   ├── store/                  # Vuex state management
-│   │   │   ├── modules/
-│   │   │   │   ├── auth.js        # Auth state
-│   │   │   │   ├── admin.js       # Admin state
-│   │   │   │   └── parking.js     # Parking state
-│   │   │   └── index.js            # Store setup
-│   │   ├── services/               # API service layer
-│   │   │   └── api.js             # Axios API client
-│   │   ├── components/             # Vue components
-│   │   │   ├── NavBar.vue
-│   │   │   ├── AppFooter.vue
-│   │   │   ├── AlertMessage.vue
-│   │   │   ├── LoadingOverlay.vue
-│   │   │   └── CheckoutModal.vue
-│   │   ├── views/                  # Page components
-│   │   │   ├── Home.vue
-│   │   │   ├── Login.vue
-│   │   │   ├── Register.vue
-│   │   │   ├── Profile.vue
-│   │   │   ├── admin/              # Admin pages
-│   │   │   └── user/               # User pages
-│   │   ├── assets/                 # Static assets
-│   │   │   └── styles/             # Global CSS
-│   │   └── utils/                  # Utility functions
-│   ├── index.html
-│   ├── vite.config.js
-│   └── package.json
-│
-├── api-definition.yaml              # OpenAPI/Swagger specification
-```
-
 ## Features
 
-### User Features
--  User registration and authentication with JWT
--  Browse available parking lots with search functionality
--  Real-time parking spot availability
--  One-click parking spot booking
--  Check-in/Check-out with automatic cost calculation
--  Reservation history and filtering by status
--  Profile management with password change
--  Export parking history as CSV
+**User:**
+- Register, login, and browse parking lots
+- Search and book parking spots
+- Check-in/Check-out with auto cost calculation
+- View reservation history and profile management
+- Export parking history as CSV
 
-### Admin Features
--  Admin dashboard with comprehensive statistics
--  Create, update, and delete parking lots
--  Manage parking spots dynamically
--  View all users and their reservation history
--  Monitor all reservations and spot occupancy
--  Daily revenue and booking reports (7-day overview)
--  Spot usage history and analytics
--  Cache management for performance optimization
+**Admin:**
+- Dashboard with statistics and analytics
+- Create, update, delete parking lots
+- Monitor all users, reservations, and occupancy
+- Daily revenue reports and revenue tracking
+- Performance optimization with caching
 
-### System Features
--  JWT-based authentication and authorization
--  Redis caching for improved performance
--  Celery task queue for background jobs
--  Email notifications via Gmail SMTP
--  Google Chat integration for alerts
--  Automatic daily reminders
--  Monthly revenue reports
--  Comprehensive error handling
+**System:**
+- JWT authentication and authorization
+- Redis caching and Celery task queue
+- Email and Google Chat notifications
+- Automated daily reminders and monthly reports
 
 ## Tech Stack
 

@@ -68,7 +68,7 @@ def make_celery(app):
     return celery_app
 
 
-# Worker initialization - when Celery worker starts, initialize Flask app
+# Worker initialization.. when Celery worker starts, initialize Flask app
 @celery_app.on_after_configure.connect
 def setup_app_context(sender=None, **kwargs):
     """
@@ -77,7 +77,7 @@ def setup_app_context(sender=None, **kwargs):
     was started from a different cwd), insert the backend directory into sys.path and retry.
     """
     import importlib, os, sys
-    # 1) Try normal import first
+    #  Try normal import first
     try:
         from app import create_app
         app = create_app()
@@ -101,7 +101,6 @@ def setup_app_context(sender=None, **kwargs):
         print(f"Fallback import failed: {e}")
 
 
-# Ensure app context is available before each task runs (safe guard)
 @signals.task_prerun.connect
 def task_prerun(sender=None, task_id=None, task=None, **kwargs):
     if not _app:

@@ -1,18 +1,11 @@
 // Date and time formatting utilities for Indian timezone (IST)
 
-/**
- * Format a date/time string to Indian Standard Time (IST)
- * @param {string|Date} dateString - The date string or Date object to format
- * @param {boolean} includeTime - Whether to include time in the output (default: true)
- * @returns {string} Formatted date string in IST
- */
 export function formatDateTime(dateString, includeTime = true) {
   if (!dateString) return 'N/A'
   
   try {
     const date = new Date(dateString)
     
-    // Check if date is valid
     if (isNaN(date.getTime())) return 'Invalid Date'
     
     const options = {
@@ -35,20 +28,10 @@ export function formatDateTime(dateString, includeTime = true) {
   }
 }
 
-/**
- * Format date to show only the date part in IST
- * @param {string|Date} dateString - The date string or Date object to format
- * @returns {string} Formatted date string
- */
 export function formatDate(dateString) {
   return formatDateTime(dateString, false)
 }
 
-/**
- * Format date to show only the time part in IST
- * @param {string|Date} dateString - The date string or Date object to format
- * @returns {string} Formatted time string
- */
 export function formatTime(dateString) {
   if (!dateString) return 'N/A'
   
@@ -69,11 +52,6 @@ export function formatTime(dateString) {
   }
 }
 
-/**
- * Format date to a relative time string (e.g., "2 hours ago")
- * @param {string|Date} dateString - The date string or Date object to format
- * @returns {string} Relative time string
- */
 export function formatRelativeTime(dateString) {
   if (!dateString) return 'N/A'
   
@@ -94,7 +72,6 @@ export function formatRelativeTime(dateString) {
     if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
     if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
     
-    // For older dates, show the full date
     return formatDateTime(dateString)
   } catch (error) {
     console.error('Error formatting relative time:', error)
@@ -102,11 +79,6 @@ export function formatRelativeTime(dateString) {
   }
 }
 
-/**
- * Format duration in hours and minutes
- * @param {number} minutes - Duration in minutes
- * @returns {string} Formatted duration string
- */
 export function formatDuration(minutes) {
   if (!minutes || minutes < 0) return '0 min'
   
@@ -119,11 +91,6 @@ export function formatDuration(minutes) {
   return `${hours} hour${hours !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`
 }
 
-/**
- * Format currency in Indian Rupees
- * @param {number} amount - The amount to format
- * @returns {string} Formatted currency string
- */
 export function formatCurrency(amount) {
   if (amount === null || amount === undefined) return '₹0'
   
@@ -135,10 +102,6 @@ export function formatCurrency(amount) {
   }).format(amount)
 }
 
-/**
- * Get current date/time in IST
- * @returns {Date} Current date in IST
- */
 export function getCurrentISTTime() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
 }

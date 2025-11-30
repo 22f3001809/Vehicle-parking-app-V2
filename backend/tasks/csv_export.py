@@ -91,7 +91,7 @@ def export_csv_task(user_id):
 Your parking history export is ready. Please find the attached CSV file.
 
 Happy parking!
-Parking App Team"""
+ParkNxt"""
             
             attachments = [(filename, csv_content, 'text/csv')]
             send_email(subject, user.email, body, attachments=attachments)

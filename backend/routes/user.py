@@ -4,7 +4,6 @@ from models import db, User, ParkingLot, ParkingSpot, Reservation
 from cache_config import cache
 from utils.cache_utils import (
     CACHE_TIMEOUT_LOTS, 
-    CACHE_TIMEOUT_SPOTS,
     CACHE_TIMEOUT_DASHBOARD,
     invalidate_lot_cache,
     invalidate_user_cache
@@ -71,7 +70,8 @@ def dashboard():
 
 @user_bp.route('/parking-lots', methods=['GET'])
 @jwt_required()
-@cache.cached(timeout=CACHE_TIMEOUT_LOTS, query_string=True)
+@cache.cached(timeout=CACHE_TIMEOUT_LOTS,
+              key_prefix=lambda: f"parking_lots_search_{request.args.get('search', 'all')}")
 def get_parking_lots():
     """Get all available parking lots"""
     search = request.args.get('search', '')
@@ -90,12 +90,14 @@ def get_parking_lots():
         )
     
     lots = query.all()
-    return jsonify([lot.to_dict() for lot in lots]), 200
+    result = (jsonify([lot.to_dict() for lot in lots]), 200)
+    
+    return result
 
 
 @user_bp.route('/parking-lots/<int:lot_id>', methods=['GET'])
 @jwt_required()
-@cache.cached(timeout=CACHE_TIMEOUT_LOTS)
+@cache.cached(timeout=CACHE_TIMEOUT_LOTS, key_prefix=lambda: f"user_parking_lot_details_{request.view_args['lot_id']}")
 def get_parking_lot_details(lot_id):
     """Get specific parking lot details"""
     lot = ParkingLot.query.get_or_404(lot_id)
@@ -103,7 +105,9 @@ def get_parking_lot_details(lot_id):
     if not lot.is_active:
         return jsonify({'error': 'This parking lot is not available'}), 404
     
-    return jsonify(lot.to_dict()), 200
+    result = (jsonify(lot.to_dict()), 200)
+    
+    return result
 
 @user_bp.route('/parking-lots/<int:lot_id>/book', methods=['POST'])
 @jwt_required()
@@ -140,7 +144,7 @@ def book_parking_spot(lot_id):
     if not spot:
         return jsonify({'error': 'No available spots in this parking lot'}), 404
     
-    # Create reservation (status: pending until check-in)
+    # Create reservation
     reservation = Reservation(
         spot_id=spot.id,
         user_id=current_user_id,
@@ -148,18 +152,17 @@ def book_parking_spot(lot_id):
         status='pending'
     )
     
-    # Update spot status to Reserved
     spot.status = 'R'
     
     db.session.add(reservation)
     db.session.commit()
     
-    # Refresh to get updated relationships
     db.session.refresh(reservation)
     
     # Invalidate user cache after booking
     invalidate_user_cache(current_user_id)
     
+    invalidate_lot_cache(lot_id)
     return jsonify({
         'message': f'Spot {spot.spot_number} reserved successfully',
         'reservation': reservation.to_dict(),
@@ -192,7 +195,7 @@ def checkin_reservation(reservation_id):
     # Update reservation and spot status
     reservation.status = 'active'
     reservation.check_in_timestamp = datetime.utcnow()
-    reservation.parking_spot.status = 'O'  # Occupied
+    reservation.parking_spot.status = 'O'  
     
     db.session.commit()
     
@@ -231,12 +234,15 @@ def release_spot(reservation_id):
     reservation.check_out_timestamp = datetime.utcnow()
     reservation.parking_cost = reservation.calculate_cost()
     reservation.status = 'completed'
-    reservation.parking_spot.status = 'A'  # Available
+    reservation.parking_spot.status = 'A' 
     
     db.session.commit()
     
     # Invalidate user cache after checkout
     invalidate_user_cache(current_user_id)
+
+    if reservation.parking_spot:
+        invalidate_lot_cache(reservation.parking_spot.lot_id)
     
     return jsonify({
         'message': 'Spot released successfully',
@@ -321,6 +327,10 @@ def cancel_reservation(reservation_id):
     
     db.session.commit()
     
+    invalidate_user_cache(current_user_id)
+
+    if reservation.parking_spot:
+        invalidate_lot_cache(reservation.parking_spot.lot_id)
     return jsonify({
         'message': 'Reservation cancelled successfully',
         'reservation': reservation.to_dict()
@@ -490,14 +500,9 @@ def trigger_csv_export():
 @user_bp.route('/export-status/<task_id>', methods=['GET'])
 @jwt_required()
 def get_export_status(task_id):
-    """
-    Check status of CSV export task
-    """
     try:
         # We use the app instance to look up the result
         task = celery_app.AsyncResult(task_id)
-        
-        # .state, .status, and .result are the standard attributes
         state = task.state
         
         response = {
@@ -512,7 +517,7 @@ def get_export_status(task_id):
             
         elif state == 'STARTED' or state == 'PROGRESS':
             response['status'] = 'processing'
-            # If you set custom state in the task using update_state, it appears in task.info
+            # If we set custom state in the task using update_state, it appears in task.info
             info = task.info if isinstance(task.info, dict) else {}
             response['message'] = info.get('message', 'Processing export...')
             

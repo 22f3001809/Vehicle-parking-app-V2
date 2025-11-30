@@ -330,7 +330,6 @@ export default {
 </script>
 
 <style scoped>
-/* Table styling */
 .table td {
   vertical-align: middle;
 }
@@ -369,7 +368,6 @@ code {
   color: #495057;
 }
 
-/* Small text styling */
 small.text-muted {
   font-size: 0.875rem;
 }

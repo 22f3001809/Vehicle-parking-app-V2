@@ -175,7 +175,6 @@ export default {
     async updateProfile() {
       this.loading = true
       
-      // Construct the full name from first and last name
       const fullName = `${this.profile.firstName} ${this.profile.lastName}`.trim()
 
       try {
@@ -275,7 +274,7 @@ export default {
   watch: {
     user: {
       handler: 'loadProfile',
-      immediate: true // Load profile immediately if 'user' is already available
+      immediate: true 
     }
   }
 }
